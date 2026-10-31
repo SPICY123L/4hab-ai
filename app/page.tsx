@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 
-type Message = { role: "user" | "assistant"; content: string; imageUrl?: string };
+type Message = { role: "user" | "assistant"; content: string; imageUrl?: string; sources?: { title: string; url: string }[] };
 const ideas = [
   ["✦", "اكتب لي فكرة مشروع", "ساعدني أبدأ مشروعًا جديدًا"],
   ["⌘", "اشرح لي موضوعًا", "شرح بسيط وواضح لأي سؤال"],
@@ -31,7 +31,7 @@ export default function Home() {
         const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: next.map(({role,content})=>({role,content})) }) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "حصل خطأ أثناء الاتصال");
-        setMessages([...next, { role: "assistant", content: data.reply || data.text || "لم يصل رد." }]);
+        setMessages([...next, { role: "assistant", content: data.reply || data.text || "لم يصل رد.", sources: Array.isArray(data.sources) ? data.sources : [] }]);
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : "حصل خطأ غير متوقع";
@@ -86,7 +86,7 @@ export default function Home() {
             <div className="message-body">
               <div className="message-label">{m.role==="user"?"أنت":"4hab AI"}</div>
               {m.content && <div className="bubble" dir="auto">{m.content}</div>}
-              {m.imageUrl && <div className="generated-image"><img src={m.imageUrl} alt="صورة تم إنشاؤها بواسطة 4hab AI" onError={(e)=>{e.currentTarget.alt="تعذر تحميل الصورة. قد تكون الخدمة المجانية مزدحمة؛ جرّب مرة أخرى بعد قليل.";}}/><a href={m.imageUrl} target="_blank" rel="noreferrer">فتح الصورة بالحجم الكامل ↗</a></div>}
+              {m.imageUrl && <div className="generated-image"><img src={m.imageUrl} alt="صورة تم إنشاؤها بواسطة 4hab AI" onError={(e)=>{e.currentTarget.alt="تعذر تحميل الصورة. قد تكون الخدمة المجانية مزدحمة؛ جرّب مرة أخرى بعد قليل.";}}/><a href={m.imageUrl} target="_blank" rel="noreferrer">فتح الصورة بالحجم الكامل ↗</a></div>}\n              {!!m.sources?.length && <div className="message-sources"><strong>المصادر</strong>{m.sources.map((source, sourceIndex)=><a key={source.url + sourceIndex} href={source.url} target="_blank" rel="noreferrer">{source.title} ↗</a>)}</div>}
               {m.role === "assistant" && <div className="message-actions">
                 <button onClick={()=>copyMessage(m.imageUrl || m.content,i)} title="نسخ"><span>{copied===i?"✓":"▢"}</span>{copied===i?"تم النسخ":"نسخ"}</button>
                 <button onClick={()=>shareMessage(m.content,m.imageUrl)} title="مشاركة"><span>↗</span>مشاركة</button>
