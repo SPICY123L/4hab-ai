@@ -14,7 +14,7 @@ async function gemini(model: string, messages: Msg[]) {
       systemInstruction: { parts: [{ text: SYS }] },
       contents: messages.map((m) => ({
         role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }],
+        parts: [ ...(m.content ? [{ text: m.content }] : []), ...(typeof (m as any).image === "string" && (m as any).image.startsWith("data:") ? [{ inlineData: { mimeType: (m as any).image.slice(5, (m as any).image.indexOf(";")), data: (m as any).image.split(",")[1] } }] : []) ],
       })),
       tools: [{ google_search: {} }],
     }),
