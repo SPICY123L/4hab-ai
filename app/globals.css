@@ -7,3 +7,25 @@
 .composer{position:sticky;bottom:0;background:linear-gradient(transparent,var(--bg) 22%);padding:18px 0 13px;z-index:2}.composer form{display:flex;align-items:flex-end;gap:10px;background:#2f2f2f;border:1px solid #505050;border-radius:23px;padding:10px 11px 10px 10px;box-shadow:0 8px 30px #0002}.composer form:focus-within{border-color:#777}.composer textarea{flex:1;resize:none;max-height:150px;min-height:42px;background:transparent;border:0;outline:0;color:#f5f5f5;padding:9px 10px;line-height:1.7;font-size:14px}.composer textarea::placeholder{color:#999}.composer form>button{width:39px;height:39px;border:0;border-radius:50%;background:#f2f2f2;color:#202020;font-size:23px;font-weight:800;cursor:pointer;flex:none}.composer form>button:disabled{opacity:.35;cursor:not-allowed}.composer-tools{display:flex;align-items:center;justify-content:space-between;gap:10px}.composer-tools>p{text-align:center;color:#858585;font-size:10px;margin:8px 0 0}.composer-tools>p span{color:var(--accent2)}.tool{margin-top:8px;background:transparent;border:1px solid #4b4b4b;color:#bdbdbd;border-radius:20px;padding:5px 11px;font-size:11px;cursor:pointer}.tool:hover,.tool.active{background:#123b32;border-color:#10a37f;color:#8ee8ce}.tool span{font-size:14px;margin-left:4px}
 .messages{padding:28px 0 12px;flex:1}.message{display:flex;gap:13px;margin:27px 0;align-items:flex-start}.message.user{flex-direction:row-reverse}.avatar{width:31px;height:31px;flex:none;border-radius:50%;background:#3b3b3b;display:grid;place-items:center;color:#f4f4f4;font-size:11px;font-weight:800}.assistant .avatar{background:var(--accent);color:white}.message-body{min-width:0;max-width:calc(100% - 45px);flex:1}.message-label{font-size:12px;font-weight:700;color:#d6d6d6;margin:0 0 7px}.user .message-label{text-align:right}.bubble{max-width:100%;width:fit-content;background:transparent;padding:0;color:#ececec;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.95;font-size:14px}.user .bubble{margin-right:auto;background:#303030;border:1px solid #414141;padding:10px 15px;border-radius:18px}.message-actions{display:flex;gap:5px;margin-top:10px}.message-actions button{display:flex;align-items:center;gap:6px;background:transparent;border:0;border-radius:7px;padding:5px 8px;color:#999;font-size:11px;cursor:pointer}.message-actions button:hover{background:#333;color:#eee}.message-actions button span{font-size:14px}.generated-image{margin-top:9px;max-width:min(100%,560px)}.generated-image img{display:block;width:100%;height:auto;max-height:620px;object-fit:contain;border:1px solid #454545;border-radius:14px;background:#191919}.generated-image a{display:inline-block;margin-top:8px;color:#8bdcc7;text-decoration:none;font-size:11px}.generated-image a:hover{text-decoration:underline}.typing{color:#aaa;font-size:12px;margin:20px 44px;display:flex;align-items:center;gap:9px}.typing-dot{width:7px;height:7px;background:var(--accent2);border-radius:50%;box-shadow:0 0 0 4px #10a37f20}
 @media(max-width:720px){.shell{grid-template-columns:1fr}.sidebar{display:none}.topbar{height:58px;padding:0 15px}.model{display:none}.mobilebrand{display:flex;align-items:center;gap:9px;font-size:14px}.mobilebrand .brandmark{width:30px;height:30px;border-radius:9px;font-size:16px}.workspace{width:calc(100% - 28px);min-height:calc(100vh - 58px)}.ideas{grid-template-columns:1fr}.welcome{padding-top:35px}.welcome h1{font-size:29px}.messages{padding-top:18px}.message{gap:9px;margin:22px 0}.message-body{max-width:calc(100% - 40px)}.bubble{font-size:13px}.composer{padding-bottom:10px}.composer-tools{align-items:flex-start;flex-direction:column;gap:0}.composer-tools>p{text-align:right}}
+
+
+.message-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.09);
+  font-size: 12px;
+}
+.message-sources strong { width: 100%; color: #a6a6ad; font-weight: 600; }
+.message-sources a {
+  color: #a9c9ff;
+  text-decoration: none;
+  border: 1px solid rgba(169,201,255,.2);
+  border-radius: 999px;
+  padding: 5px 10px;
+  overflow-wrap: anywhere;
+}
+.message-sources a:hover { background: rgba(169,201,255,.09); }
