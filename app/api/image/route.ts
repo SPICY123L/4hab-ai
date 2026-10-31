@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     const url =
       "https://image.pollinations.ai/prompt/" +
       encodeURIComponent(prompt) +
-      `?width=768&height=768&nologo=true&seed=${Date.now()}`;
+      `?model=flux&width=768&height=768&nologo=true&seed=${Date.now()}`;
 
     // Return both keys because the frontend supports either response shape.
     return Response.json({ url, imageUrl: url, prompt });
