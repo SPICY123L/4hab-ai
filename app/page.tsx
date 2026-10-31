@@ -2,6 +2,14 @@
 import { useState } from "react";
 
 type Message = { role: "user" | "assistant"; content: string; imageUrl?: string; sources?: { title: string; url: string }[] };
+function renderMessage(content: string) {
+  return content.split(/(https?:\\/\\/[^\\s)]+)/g).map((part, index) =>
+    /^https?:\\/\\//i.test(part)
+      ? <a key={index} href={part.replace(/[.,!?;:]+$/, "")} target="_blank" rel="noreferrer">{part}</a>
+      : <span key={index}>{part}</span>
+  );
+}
+
 const ideas = [
   ["✦", "اكتب لي فكرة مشروع", "ساعدني أبدأ مشروعًا جديدًا"],
   ["⌘", "اشرح لي موضوعًا", "شرح بسيط وواضح لأي سؤال"],
@@ -85,7 +93,7 @@ export default function Home() {
             <div className="avatar">{m.role==="user"?"أ":"4"}</div>
             <div className="message-body">
               <div className="message-label">{m.role==="user"?"أنت":"4hab AI"}</div>
-              {m.content && <div className="bubble" dir="auto">{m.content}</div>}
+              {m.content && <div className="bubble" dir="auto">{renderMessage(m.content)}</div>}
               {m.imageUrl && <div className="generated-image"><img src={m.imageUrl} alt="صورة تم إنشاؤها بواسطة 4hab AI" onError={(e)=>{e.currentTarget.alt="تعذر تحميل الصورة. قد تكون الخدمة المجانية مزدحمة؛ جرّب مرة أخرى بعد قليل.";}}/><a href={m.imageUrl} target="_blank" rel="noreferrer">فتح الصورة بالحجم الكامل ↗</a></div>}\n              {!!m.sources?.length && <div className="message-sources"><strong>المصادر</strong>{m.sources.map((source, sourceIndex)=><a key={source.url + sourceIndex} href={source.url} target="_blank" rel="noreferrer">{source.title} ↗</a>)}</div>}
               {m.role === "assistant" && <div className="message-actions">
                 <button onClick={()=>copyMessage(m.imageUrl || m.content,i)} title="نسخ"><span>{copied===i?"✓":"▢"}</span>{copied===i?"تم النسخ":"نسخ"}</button>
