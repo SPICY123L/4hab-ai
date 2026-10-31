@@ -183,7 +183,7 @@ export default function Home() {
   );
 }
 
-const css = \`
+const css = `
 *{box-sizing:border-box}
 body{margin:0;background:#0b0a16;color:#f0eeff;font-family:system-ui,Tahoma,sans-serif}
 .app{display:flex;height:100dvh}
@@ -218,4 +218,4 @@ body{margin:0;background:#0b0a16;color:#f0eeff;font-family:system-ui,Tahoma,sans
 .shade{position:fixed;inset:0;background:#0008;z-index:10}
 .burger{display:block}
 }
-\`;
+`;
