@@ -15,9 +15,7 @@ export async function POST(req: Request) {
 
     // Use the current authenticated endpoint when a Pollinations key is configured.
     // Otherwise try the legacy free endpoint, which may enforce anonymous rate limits.
-    const url = apiKey
-      ? `https://gen.pollinations.ai/image/${encodedPrompt}?model=flux&width=768&height=768`
-      : `https://image.pollinations.ai/prompt/${encodedPrompt}?model=flux&width=768&height=768&nologo=true&seed=${Date.now()}`;
+    const url = `https://gen.pollinations.ai/image/${encodedPrompt}?model=black-forest-labs/flux.1-schnell&width=768&height=768`;
 
     const response = await fetch(url, {
       headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
@@ -27,14 +25,16 @@ export async function POST(req: Request) {
 
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
-      console.error("Pollinations image request failed:", response.status, detail.slice(0, 500));
+      console.error("Pollinations image request failed:", response.status, detail.slice(0, 1000));
+      let providerMessage = "";
+      try { const parsed = JSON.parse(detail); providerMessage = parsed?.error?.message || parsed?.error || parsed?.message || ""; } catch { providerMessage = detail.slice(0, 250); }
       if (response.status === 401 || response.status === 403) {
         return Response.json({ error: "خدمة الصور تحتاج مفتاح Pollinations صالح. أضف POLLINATIONS_API_KEY في إعدادات Vercel." }, { status: 502 });
       }
       if (response.status === 402 || response.status === 429) {
         return Response.json({ error: "وصلت للحد المجاني لتوليد الصور حاليًا. انتظر قليلًا ثم جرّب مرة أخرى." }, { status: 429 });
       }
-      return Response.json({ error: `خدمة الصور لم تعمل (رمز ${response.status}). جرّب مرة أخرى لاحقًا.` }, { status: 502 });
+      return Response.json({ error: `Pollinations رفضت الطلب (${response.status}): ${String(providerMessage || "سبب غير موضح").slice(0, 250)}` }, { status: 502 });
     }
 
     const contentType = response.headers.get("content-type") || "";
