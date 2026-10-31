@@ -10,15 +10,53 @@ export async function POST(req: Request) {
       return Response.json({ error: "وصف الصورة طويل جدًا. اختصره إلى 1000 حرف." }, { status: 400 });
     }
 
-    const url =
-      "https://image.pollinations.ai/prompt/" +
-      encodeURIComponent(prompt) +
-      `?model=flux&width=768&height=768&nologo=true&seed=${Date.now()}`;
+    const encodedPrompt = encodeURIComponent(prompt);
+    const apiKey = process.env.POLLINATIONS_API_KEY;
 
-    // Return both keys because the frontend supports either response shape.
-    return Response.json({ url, imageUrl: url, prompt });
+    // Use the current authenticated endpoint when a Pollinations key is configured.
+    // Otherwise try the legacy free endpoint, which may enforce anonymous rate limits.
+    const url = apiKey
+      ? `https://gen.pollinations.ai/image/${encodedPrompt}?model=flux&width=768&height=768`
+      : `https://image.pollinations.ai/prompt/${encodedPrompt}?model=flux&width=768&height=768&nologo=true&seed=${Date.now()}`;
+
+    const response = await fetch(url, {
+      headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+      signal: AbortSignal.timeout(120000),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      console.error("Pollinations image request failed:", response.status, detail.slice(0, 500));
+      if (response.status === 401 || response.status === 403) {
+        return Response.json({ error: "خدمة الصور تحتاج مفتاح Pollinations صالح. أضف POLLINATIONS_API_KEY في إعدادات Vercel." }, { status: 502 });
+      }
+      if (response.status === 402 || response.status === 429) {
+        return Response.json({ error: "وصلت للحد المجاني لتوليد الصور حاليًا. انتظر قليلًا ثم جرّب مرة أخرى." }, { status: 429 });
+      }
+      return Response.json({ error: `خدمة الصور لم تعمل (رمز ${response.status}). جرّب مرة أخرى لاحقًا.` }, { status: 502 });
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.startsWith("image/")) {
+      const detail = await response.text().catch(() => "");
+      console.error("Pollinations returned non-image response:", contentType, detail.slice(0, 500));
+      return Response.json({ error: "خدمة الصور رجّعت استجابة غير صالحة. جرّب مرة أخرى لاحقًا." }, { status: 502 });
+    }
+
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (!bytes.length) {
+      return Response.json({ error: "الصورة التي رجعت من الخدمة فارغة. حاول مرة أخرى." }, { status: 502 });
+    }
+
+    // Return the actual image bytes as a data URL so the chat never stores a dead provider link.
+    const imageUrl = `data:${contentType};base64,${bytes.toString("base64")}`;
+    return Response.json({ url: imageUrl, imageUrl, prompt });
   } catch (error) {
     console.error("Image generation error:", error);
-    return Response.json({ error: "تعذر تجهيز طلب الصورة. حاول مرة أخرى." }, { status: 500 });
+    const message = error instanceof Error && error.name === "TimeoutError"
+      ? "توليد الصورة أخذ وقتًا طويلًا. حاول مرة أخرى."
+      : "تعذر تجهيز الصورة الآن. حاول مرة أخرى.";
+    return Response.json({ error: message }, { status: 500 });
   }
 }
