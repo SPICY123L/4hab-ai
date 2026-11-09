@@ -610,7 +610,6 @@ export default function Home() {
               <h3 className="settings-section-title">الحساب والخصوصية</h3>
               <div className="setting-row"><div><strong>البريد الإلكتروني</strong><small>{user?.email || "حساب ضيف"}</small></div><span className="setting-value">{user ? "متصل" : "ضيف"}</span></div>
               <div className="setting-row"><div><strong>الملف الشخصي</strong><small>الاسم وصورة الحساب</small></div><button className="theme-switch" onClick={() => setPanel("profile")}>فتح</button></div>
-              <div className="setting-row"><div><strong>تسجيل الخروج</strong><small>إنهاء جلسة الحساب</small></div><button className="theme-switch" onClick={handleSignOut} disabled={!user}>خروج</button></div>
             </div>
           </>}
         </section>
