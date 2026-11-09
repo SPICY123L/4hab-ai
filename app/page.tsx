@@ -197,6 +197,26 @@ export default function Home() {
     }
   }
 
+  async function handlePasswordReset() {
+    setAuthError("");
+    if (!email.trim()) {
+      setAuthError("اكتب بريدك الإلكتروني أولًا، وسنرسل لك رابط تغيير كلمة المرور.");
+      return;
+    }
+    setAuthBusy(true);
+    try {
+      const { error } = await getSupabase().auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: window.location.origin,
+      });
+      if (error) throw error;
+      setAuthError("إذا كان البريد مسجلًا، ستصلك رسالة فيها رابط إعادة تعيين كلمة المرور. افحص صندوق الوارد والرسائل غير المرغوب فيها.");
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "تعذر إرسال رابط استعادة كلمة المرور.");
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
   async function handleSignOut() {
     setAuthError("");
     try {
@@ -419,6 +439,7 @@ export default function Home() {
               <button className="auth-switch" onClick={() => { setAuthMode(authMode === "signin" ? "signup" : "signin"); setAuthError(""); }}>
                 {authMode === "signin" ? "ليس لديك حساب؟ أنشئ حسابًا" : "لديك حساب؟ سجّل الدخول"}
               </button>
+              {authMode === "signin" && <button className="auth-switch" onClick={handlePasswordReset} disabled={authBusy}>نسيت كلمة المرور؟</button>}
             </>
           )}
           {authError && <div className="auth-error">{authError}</div>}
@@ -434,12 +455,11 @@ export default function Home() {
           ))}
         </div>
         <div className="side-bottom">
-          <button className="side-account" onClick={() => { setNameDraft(displayName); setPanel("profile"); setMenu(false); }}>
+          <button className="side-account" onClick={() => { setNameDraft(displayName); setPanel("settings"); setMenu(false); }}>
             <span className="account-avatar">{(displayName || "ض").slice(0,1)}</span>
             <span className="account-copy"><strong>{displayName}</strong><small>{user?.email || "الملف الشخصي"}</small></span>
             <span className="account-more">⋯</span>
           </button>
-          <button className="settings-entry" onClick={() => { setPanel("settings"); setMenu(false); }}>⚙ الإعدادات</button>
         </div>
       </aside>
       {panel && <div className="panel-shade" onClick={() => setPanel(null)}>
