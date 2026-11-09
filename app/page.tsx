@@ -94,7 +94,7 @@ export default function Home() {
     }));
 
     try {
-      const normalizedText = text.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").trim();
+      const normalizedText = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
       const wantsRealImages = normalizedText === "محمد صلاح" || /(?:صور|صوره|صورة|ابعت|هات|وريني).*(?:محمد صلاح)|(?:محمد صلاح).*(?:صور|صوره|صورة)/i.test(normalizedText);
       if (wantsRealImages && !imgMode && !imageData) {
         const r = await fetch(`/api/search-images?q=${encodeURIComponent("Mohamed Salah")}`);
