@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-type Msg = { role: "user" | "assistant"; content: string; image?: string; attachment?: string; sources?: {title:string;url:string}[] };
+type Msg = { role: "user" | "assistant"; content: string; image?: string; attachment?: string; sources?: {title:string;url:string}[]; images?: {title:string;url:string;pageUrl?:string;artist?:string;license?:string}[] };
 type Chat = { id: string; title: string; messages: Msg[] };
 
 const KEY = "4hab-chats";
@@ -94,7 +94,21 @@ export default function Home() {
     }));
 
     try {
-      if (imgMode) {
+      const normalizedText = text.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").trim();
+      const wantsRealImages = normalizedText === "محمد صلاح" || /(?:صور|صوره|صورة|ابعت|هات|وريني).*(?:محمد صلاح)|(?:محمد صلاح).*(?:صور|صوره|صورة)/i.test(normalizedText);
+      if (wantsRealImages && !imgMode && !imageData) {
+        const r = await fetch(`/api/search-images?q=${encodeURIComponent("Mohamed Salah")}`);
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || "تعذر البحث عن الصور.");
+        update(id, (c) => ({
+          ...c,
+          messages: [...c.messages, {
+            role: "assistant",
+            content: d.images?.length ? "دي صور حقيقية لمحمد صلاح من ويكيميديا كومنز:" : "ملقيتش صور مناسبة لمحمد صلاح في مصدر الصور المتاح.",
+            images: d.images || [],
+          }],
+        }));
+      } else if (imgMode) {
         const r = await fetch("/api/image", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -161,7 +175,17 @@ export default function Home() {
           {chat?.messages.map((m, i) => (
             <div key={i} className={"msg " + m.role}>
               {m.attachment && <img className="uploaded" src={m.attachment} alt="الصورة المرفقة" />}
-              {m.image ? (
+              {m.images?.length ? (
+                <div>
+                  {m.content && <p>{m.content}</p>}
+                  <div className="real-image-grid">{m.images.map((photo,j)=><div className="real-image-card" key={photo.url + j}>
+                    <a href={photo.pageUrl || photo.url} target="_blank" rel="noreferrer"><img src={photo.url} alt={photo.title} loading="lazy" /></a>
+                    <div className="real-image-caption">{photo.title}</div>
+                    {photo.artist && <div className="real-image-credit">المصدر: {photo.artist}</div>}
+                    {photo.license && <div className="real-image-credit">الرخصة: {photo.license}</div>}
+                  </div>)}</div>
+                </div>
+              ) : m.image ? (
                 <div>
                   {m.content && <p>{m.content}</p>}
                   <a href={m.image} target="_blank" rel="noreferrer">
@@ -212,7 +236,7 @@ body{margin:0;background:#212121;color:#f5f5f5;font-family:system-ui,Tahoma,sans
 .msg{padding:12px 14px;border-radius:16px;white-space:pre-wrap;line-height:1.7;max-width:88%;word-wrap:break-word}
 .msg.user{background:#303030;align-self:flex-start}
 .msg.assistant{background:#262626;border:1px solid #383838;align-self:flex-end}
-.msg img{max-width:100%;border-radius:12px;display:block}
+.msg img{max-width:100%;border-radius:12px;display:block}.real-image-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}.real-image-card{min-width:0;background:#1d1d1d;border:1px solid #444;border-radius:12px;padding:7px}.real-image-card img{width:100%;height:180px;object-fit:cover}.real-image-caption{font-size:12px;margin-top:6px;overflow-wrap:anywhere}.real-image-credit{font-size:10px;color:#aaa;overflow-wrap:anywhere}@media(max-width:520px){.real-image-grid{grid-template-columns:1fr}.real-image-card img{height:220px}}
 .msg a{color:#c8baff}
 .msg p{margin:0 0 8px}
 .bar{display:flex;gap:8px;align-items:flex-end;max-width:820px;width:100%;margin:0 auto;padding:10px 12px calc(12px + env(safe-area-inset-bottom,0px))}
