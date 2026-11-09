@@ -98,14 +98,38 @@ function makeAnswerBlocks(answer: string, imagesByQuery: Map<string, RealImage[]
 }
 
 async function pollinations(messages: Msg[]) {
-  const r = await fetch("https://text.pollinations.ai/openai", {
+  const apiKey = process.env.POLLINATIONS_API_KEY;
+  if (!apiKey) throw new Error("POLLINATIONS_API_KEY is missing");
+
+  const r = await fetch("https://gen.pollinations.ai/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "openai", messages: [{ role: "system", content: SYS }, ...messages] }),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "openai/gpt-5.4-nano",
+      messages: [{ role: "system", content: SYS }, ...messages.map((message) => ({
+        role: message.role === "assistant" ? "assistant" : "user",
+        content: message.content || "",
+      }))],
+      stream: false,
+    }),
+    cache: "no-store",
   });
-  if (!r.ok) throw new Error("تعذر الاتصال بالخدمة الاحتياطية");
-  const d = await r.json();
-  return d.choices?.[0]?.message?.content || "";
+
+  const raw = await r.text();
+  let data: any;
+  try { data = JSON.parse(raw); } catch { data = null; }
+  if (!r.ok) {
+    const detail = data?.error?.message || data?.message || raw.slice(0, 500) || r.statusText;
+    throw new Error(`Pollinations HTTP ${r.status}: ${detail}`);
+  }
+  const answer = data?.choices?.[0]?.message?.content;
+  if (typeof answer !== "string" || !answer.trim()) {
+    throw new Error("Pollinations returned an empty response");
+  }
+  return answer.trim();
 }
 
 export async function POST(req: Request) {
