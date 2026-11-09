@@ -129,6 +129,10 @@ export async function POST(req: Request) {
       catch (error) { console.error("Fallback error:", String(error)); }
     }
     answer = answer || "الخدمة مزدحمة الآن، حاول بعد قليل.";
+    const asksAboutGiza = /giza|pyramid|khufu|khafre|menkaure|sphinx|أهرام|اهرام|هرم|الجيزة/.test(messages[messages.length - 1]?.content || "");
+    if (asksAboutGiza && !/\[\[IMAGE:/.test(answer)) {
+      answer += "\n\n[[IMAGE: Giza pyramids Egypt]]\n\n[[IMAGE: Great Pyramid of Khufu Giza]]\n\n[[IMAGE: Great Sphinx of Giza]]";
+    }
     const imageQueries = [...answer.matchAll(/\[\[IMAGE:\s*([^\]]+)\]\]/g)].map((match) => match[1].trim()).slice(0, 3);
     const imageResults = await Promise.all(imageQueries.map(async (query) => [query, await searchRealImages(query)] as const));
     const blocks = makeAnswerBlocks(answer, new Map(imageResults));
