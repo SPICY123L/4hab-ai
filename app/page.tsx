@@ -24,6 +24,7 @@ export default function Home() {
   const [activeMessageMenu, setActiveMessageMenu] = useState<number | null>(null);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const skipLocalSaveOnceRef = useRef(false);
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [cloudReadyUserId, setCloudReadyUserId] = useState<string | null>(null);
@@ -55,13 +56,17 @@ export default function Home() {
 
   useEffect(() => {
     if (ready && authReady && !user) {
+      if (skipLocalSaveOnceRef.current) {
+        skipLocalSaveOnceRef.current = false;
+        return;
+      }
       try { localStorage.setItem(KEY, JSON.stringify({ chats, cur })); } catch {}
     }
   }, [chats, cur, ready, authReady, user]);
 
   useEffect(() => {
     let active = true;
-    let client;
+    let client: ReturnType<typeof getSupabase>;
     try {
       client = getSupabase();
     } catch (error) {
@@ -76,6 +81,7 @@ export default function Home() {
       setAuthReady(true);
     });
     const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) skipLocalSaveOnceRef.current = true;
       setUser(session?.user ?? null);
       setAuthReady(true);
       setAuthError("");
