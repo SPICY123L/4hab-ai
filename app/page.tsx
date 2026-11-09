@@ -287,17 +287,19 @@ export default function Home() {
         </div>
         <div className="bar">
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f=e.target.files?.[0]; if(!f)return; if(f.size>8*1024*1024){alert("حجم الصورة يجب أن يكون أقل من 8MB");e.target.value="";return;} const reader=new FileReader(); reader.onload=()=>{setAttachment(String(reader.result));setAttachmentName(f.name);}; reader.readAsDataURL(f); e.target.value=""; }} />
-          <button className="tool" onClick={() => fileRef.current?.click()} title="إرفاق ملف" aria-label="إرفاق ملف">＋</button>
-          <button className={"tool image-tool" + (imgMode ? " selected" : "")} onClick={() => setImgMode(!imgMode)} title="إنشاء صورة" aria-label="تبديل وضع الصور"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4" fill="none" stroke="currentColor" strokeWidth="1.7"/><circle cx="8.5" cy="8.5" r="1.7" fill="currentColor"/><path d="m4 17 5-5 3.5 3.5 2.5-2.5 5 5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
-          <button className={"tool mic-tool" + (listening ? " selected" : "")} onClick={toggleVoiceInput} title={listening ? "إيقاف التسجيل" : "إملاء صوتي"} aria-label="إملاء صوتي"><svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="12" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-4 0h8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg></button>
-          <div className="composer"><textarea
-            rows={1}
-            value={input}
-            placeholder={imgMode ? "اوصف الصورة…" : "اسأل 4hab AI أي شيء…"}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-          />{attachment && <div className="attachment-preview"><img src={attachment} alt="معاينة المرفق"/><span>{attachmentName}</span><button onClick={()=>{setAttachment(null);setAttachmentName("");}}>×</button></div>}</div>
-          <button className="send" onClick={send} disabled={busy || (!input.trim() && !attachment)} aria-label="إرسال">↑</button>
+          <div className="composer">
+            <button className="inside-tool plus-tool" onClick={() => fileRef.current?.click()} title="إرفاق صورة" aria-label="إرفاق صورة">＋</button>
+            <textarea
+              rows={1}
+              value={input}
+              placeholder={imgMode ? "اوصف الصورة…" : "اسأل 4hab AI أي شيء…"}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+            />
+            {attachment && <div className="attachment-preview"><img src={attachment} alt="معاينة المرفق"/><span>{attachmentName}</span><button onClick={()=>{setAttachment(null);setAttachmentName("");}}>×</button></div>}
+            <button className={"inside-tool mic-tool" + (listening ? " selected" : "")} onClick={toggleVoiceInput} title={listening ? "إيقاف التسجيل" : "إملاء صوتي"} aria-label="إملاء صوتي"><svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="12" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-4 0h8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg></button>
+            <button className="send" onClick={send} disabled={busy || (!input.trim() && !attachment)} aria-label="إرسال">↑</button>
+          </div>
         </div>
       </main>
     </div>
@@ -334,16 +336,18 @@ button{font:inherit}
 .real-image-credit{font-size:10px;color:#999;overflow-wrap:anywhere}
 .msg a{color:#ddd}
 .msg p{margin:0 0 10px}
-.bar{position:absolute;bottom:0;left:0;right:0;display:flex;gap:9px;align-items:flex-end;max-width:850px;width:calc(100% - 40px);margin:0 auto;padding:12px 0 20px;background:linear-gradient(180deg,transparent 0%,#000 20%)}
-.composer{flex:1;position:relative;min-width:0;background:#171717;border:1px solid #3a3a3a;border-radius:28px;padding:7px 12px;box-shadow:0 4px 24px #0008}
-.bar textarea{display:block;width:100%;resize:none;max-height:160px;background:transparent;color:#fff;border:0;outline:0;padding:8px 4px;font:inherit;min-width:0;line-height:1.6}
+.bar{position:absolute;bottom:0;left:0;right:0;display:flex;gap:9px;align-items:center;max-width:850px;width:calc(100% - 40px);margin:0 auto;padding:12px 0 20px;background:linear-gradient(180deg,transparent 0%,#000 20%)}
+.composer{flex:1;position:relative;min-width:0;display:flex;align-items:center;gap:9px;background:#171717;border:1px solid #3a3a3a;border-radius:28px;padding:6px 9px;box-shadow:0 4px 24px #0008;min-height:56px}
+.bar textarea{display:block;flex:1;width:100%;resize:none;max-height:130px;min-height:38px;background:transparent;color:#fff;border:0;outline:0;padding:7px 3px;font:inherit;min-width:0;line-height:1.5}
+.inside-tool{width:34px;height:34px;flex-shrink:0;border-radius:50%;border:0;background:transparent;color:#aaa;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:23px}
+.inside-tool:hover,.inside-tool.selected{background:#303030;color:#fff}
+.inside-tool svg{width:19px;height:19px;fill:none}
+.composer .send{width:36px;height:36px;flex-shrink:0;border-radius:50%;border:0;background:#f5f5f5;color:#111;font-size:1.25rem;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.composer .send:disabled{opacity:.4;cursor:not-allowed}
+.attachment-preview{position:absolute;bottom:62px;right:10px;background:#222;border:1px solid #444;border-radius:10px;padding:6px;display:flex;align-items:center;gap:8px;max-width:220px}
+
 .bar textarea::placeholder{color:#929292}
-.send,.tool{width:42px;height:42px;flex-shrink:0;border-radius:50%;border:1px solid #3d3d3d;background:#202020;color:#f5f5f5;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,border-color .15s}
-.tool:hover{background:#303030}
-.image-tool svg{width:20px;height:20px}
-.send{background:#f5f5f5;color:#111;border:0;font-size:1.35rem;font-weight:700}
-.send:disabled{opacity:.4;cursor:not-allowed}
-.tool.selected{background:#f5f5f5;color:#111;border-color:#f5f5f5}
+
 .actions{display:flex;gap:5px;margin-top:12px;align-items:center}
 .actions button{width:30px;height:30px;padding:6px;border:0;border-radius:8px;color:#999;display:flex;align-items:center;justify-content:center}
 .actions button svg{width:17px;height:17px;fill:none}
@@ -352,7 +356,7 @@ button{font:inherit}
 .more-menu{position:absolute;bottom:35px;right:0;z-index:30;min-width:150px;padding:5px;background:#252525;border:1px solid #444;border-radius:10px;box-shadow:0 8px 28px #000b;display:flex;flex-direction:column}
 .more-menu button{width:100%;height:auto;justify-content:flex-start;padding:9px 10px;color:#eee;font-size:13px;white-space:nowrap}
 .more-menu button:hover{background:#383838}
-.mic-tool svg{width:20px;height:20px}
+.mic-tool svg{width:19px;height:19px}
 .msg a{color:#8ab4f8;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
 .actions button,.sources a{background:transparent;border:1px solid #383838;border-radius:8px;color:#aaa;padding:5px 9px;font:inherit;font-size:12px;text-decoration:none;cursor:pointer}
 .actions button:hover,.sources a:hover{background:#202020;color:#fff}
