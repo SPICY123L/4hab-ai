@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     const query = (searchParams.get("q") || "").trim().slice(0, 120);
     if (!query) return Response.json({ error: "اكتب اسم الشخص أو الشيء الذي تبحث عن صوره." }, { status: 400 });
 
-    const searchParams = new URLSearchParams({
+    const commonsParams = new URLSearchParams({
       action: "query",
       format: "json",
       generator: "search",
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
       iiprop: "url|extmetadata",
       iiurlwidth: "900",
     });
-    const imageResponse = await fetch(`https://commons.wikimedia.org/w/api.php?${searchParams.toString()}`, {
+    const imageResponse = await fetch(`https://commons.wikimedia.org/w/api.php?${commonsParams.toString()}`, {
       headers: { "User-Agent": "4habAI/1.0 (real image search)" },
       cache: "no-store",
     });
