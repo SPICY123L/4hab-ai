@@ -82,6 +82,12 @@ export default function Home() {
 
   useEffect(() => {
     let active = true;
+    const currentUrl = new URL(window.location.href);
+    const hashParams = new URLSearchParams(currentUrl.hash.replace(/^#/, ""));
+    const recoveryRedirect =
+      currentUrl.searchParams.get("type") === "recovery" ||
+      hashParams.get("type") === "recovery";
+    if (recoveryRedirect) setRecoveryMode(true);
     let client: ReturnType<typeof getSupabase>;
     try {
       client = getSupabase();
@@ -94,6 +100,7 @@ export default function Home() {
       if (!active) return;
       if (error) setAuthError(error.message);
       setUser(data.session?.user ?? null);
+      if (recoveryRedirect && data.session) setRecoveryMode(true);
       setAuthReady(true);
     });
     const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
