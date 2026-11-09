@@ -734,15 +734,15 @@ export default function Home() {
               ) : <div>{renderLinkedText(m.content)}</div>}
               {m.sources?.length ? <div className="sources">{m.sources.map((source,j)=><a key={j} href={source.url} target="_blank" rel="noreferrer">{source.title}</a>)}</div> : null}
               {m.role === "assistant" && <div className="actions">
-                <button onClick={() => copyMessage(m.content)} title="نسخ" aria-label="نسخ">📋</button>
-                <button onClick={() => shareMessage(m.content)} title="مشاركة" aria-label="مشاركة">↗️</button>
-                <button onClick={() => speakMessage(m.content)} title="استماع" aria-label="استماع">🔊</button>
+                <button onClick={() => copyMessage(m.content)} title="نسخ" aria-label="نسخ"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button>
+                <button onClick={() => shareMessage(m.content)} title="مشاركة" aria-label="مشاركة"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.7 10.7 6.6-4.4M8.7 13.3l6.6 4.4"/></svg></button>
+                <button onClick={() => speakMessage(m.content)} title="استماع" aria-label="استماع"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></button>
                 <div className="message-more">
-                  <button onClick={() => setActiveMessageMenu(activeMessageMenu === i ? null : i)} title="المزيد" aria-label="المزيد">⋯</button>
+                  <button onClick={() => setActiveMessageMenu(activeMessageMenu === i ? null : i)} title="المزيد" aria-label="المزيد"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
                   {activeMessageMenu === i && <div className="more-menu">
-                    <button onClick={() => copyMessage(m.content)}>📋 نسخ الرسالة</button>
-                    <button onClick={() => shareMessage(m.content)}>↗️ مشاركة الرسالة</button>
-                    <button onClick={() => speakMessage(m.content)}>🔊 استمع للرسالة</button>
+                    <button onClick={() => copyMessage(m.content)}>نسخ الرسالة</button>
+                    <button onClick={() => shareMessage(m.content)}>مشاركة الرسالة</button>
+                    <button onClick={() => speakMessage(m.content)}>استمع للرسالة</button>
                   </div>}
                 </div>
               </div>}
@@ -868,13 +868,13 @@ button{font:inherit}
 
 .actions{display:flex;gap:12px;margin-top:12px;align-items:center}
 .actions button{width:auto;min-width:28px;height:30px;padding:2px;border:0;border-radius:0;background:transparent!important;box-shadow:none;color:#999;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer}
-.actions button svg{width:17px;height:17px;fill:none}
+.actions button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .actions button:hover{background:transparent!important;color:#fff;transform:translateY(-1px)}
 .message-more{position:relative}
 .more-menu{position:absolute;bottom:35px;right:0;z-index:30;min-width:150px;padding:4px;background:transparent;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column}
 .more-menu button{width:100%;height:auto;justify-content:flex-start;padding:7px 4px;color:#eee;font-size:13px;white-space:nowrap;background:transparent!important;border:0;box-shadow:none}
 .more-menu button:hover{background:transparent!important;color:#fff}
-.mic-tool svg{width:19px;height:19px}
+.mic-tool svg{width:19px;height:19px}.actions button{color:#999}.app.light .actions button{color:#777}.app.light .actions button:hover{color:#111}
 .msg a{color:#8ab4f8;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
 .actions button,.sources a{background:transparent!important;border:0;border-radius:0;box-shadow:none;color:#aaa;padding:3px 0;font:inherit;font-size:18px;text-decoration:none;cursor:pointer}
 .actions button:hover,.sources a:hover{background:transparent!important;color:#fff}
