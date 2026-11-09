@@ -339,6 +339,40 @@ export default function Home() {
     setChats((p) => p.map((c) => (c.id === id ? fn(c) : c)));
   }
 
+  function togglePin(id: string) {
+    update(id, (c) => ({ ...c, pinned: !c.pinned }));
+    setActiveChatMenu(null);
+  }
+
+  function renameChat(id: string) {
+    const current = chats.find((c) => c.id === id);
+    if (!current) return;
+    const next = window.prompt("اكتب الاسم الجديد للمحادثة:", current.title);
+    if (next?.trim()) update(id, (c) => ({ ...c, title: next.trim().slice(0, 80) }));
+    setActiveChatMenu(null);
+  }
+
+  async function shareChat(id: string) {
+    const current = chats.find((c) => c.id === id);
+    if (!current) return;
+    const content = current.messages.map((m) => (m.role === "user" ? "أنت: " : "4hab AI: ") + m.content).join("\\n\\n");
+    try {
+      if (navigator.share) await navigator.share({ title: current.title, text: content });
+      else { await navigator.clipboard.writeText(content); alert("تم نسخ المحادثة لمشاركتها."); }
+    } catch (error) {
+      if (!(error instanceof Error && error.name === "AbortError")) alert("تعذرت مشاركة المحادثة.");
+    }
+    setActiveChatMenu(null);
+  }
+
+  function toggleArchive(id: string) {
+    update(id, (c) => ({ ...c, archived: !c.archived }));
+    setActiveChatMenu(null);
+  }
+
+  const visibleChats = chats
+    .filter((c) => showArchived ? !!c.archived : !c.archived)
+    .sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned));
   const chat = chats.find((c) => c.id === cur);
   const labels: Record<string, Record<string, string>> = {
     ar: {newChat:"محادثة جديدة",images:"الصور",tasks:"المهام المجدولة",library:"المكتبة",plugins:"المكونات الإضافية",explore:"استكشف",chats:"محادثاتك",language:"اللغة",empty:"كيف أقدر أساعدك اليوم؟",placeholder:"اسأل 4hab AI أي شيء…",archive:"الأرشيف"},
