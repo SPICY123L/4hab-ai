@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { getSupabase } from "../lib/supabase/client";
 
 type Msg = { role: "user" | "assistant"; content: string; image?: string; attachment?: string; sources?: {title:string;url:string}[]; images?: {title:string;url:string;pageUrl?:string;artist?:string;license?:string}[] };
 type Chat = { id: string; title: string; messages: Msg[] };
 
 const KEY = "4hab-chats";
-const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+const uid = () => typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 3 | 8)).toString(16); });
 
 export default function Home() {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -22,6 +24,15 @@ export default function Home() {
   const [activeMessageMenu, setActiveMessageMenu] = useState<number | null>(null);
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [cloudReadyUserId, setCloudReadyUserId] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [syncError, setSyncError] = useState("");
 
   useEffect(() => {
     try {
@@ -43,14 +54,144 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (ready) {
+    if (ready && authReady && !user) {
       try { localStorage.setItem(KEY, JSON.stringify({ chats, cur })); } catch {}
     }
-  }, [chats, cur, ready]);
+  }, [chats, cur, ready, authReady, user]);
+
+  useEffect(() => {
+    let active = true;
+    let client;
+    try {
+      client = getSupabase();
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "إعدادات Supabase غير مكتملة.");
+      setAuthReady(true);
+      return;
+    }
+    client.auth.getSession().then(({ data, error }) => {
+      if (!active) return;
+      if (error) setAuthError(error.message);
+      setUser(data.session?.user ?? null);
+      setAuthReady(true);
+    });
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setAuthReady(true);
+      setAuthError("");
+    });
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!authReady) return;
+    if (!user) {
+      setCloudReadyUserId(null);
+      try {
+        const saved = JSON.parse(localStorage.getItem(KEY) || "null");
+        if (saved?.chats?.length) {
+          setChats(saved.chats);
+          setCur(saved.cur || saved.chats[0].id);
+        }
+      } catch {}
+      return;
+    }
+    let cancelled = false;
+    setCloudReadyUserId(null);
+    (async () => {
+      try {
+        const { data, error } = await getSupabase()
+          .from("chats")
+          .select("id, title, messages")
+          .eq("user_id", user.id)
+          .order("updated_at", { ascending: false });
+        if (error) throw error;
+        if (cancelled) return;
+        if (data?.length) {
+          const remoteChats: Chat[] = data.map((row: any) => ({
+            id: row.id,
+            title: row.title || "محادثة جديدة",
+            messages: Array.isArray(row.messages) ? row.messages : [],
+          }));
+          setChats(remoteChats);
+          setCur(remoteChats[0].id);
+        } else {
+          const first: Chat = { id: uid(), title: "محادثة جديدة", messages: [] };
+          setChats([first]);
+          setCur(first.id);
+        }
+        setSyncError("");
+        setCloudReadyUserId(user.id);
+      } catch (error) {
+        if (!cancelled) setSyncError(error instanceof Error ? error.message : "تعذر تحميل المحادثات.");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, authReady]);
+
+  useEffect(() => {
+    if (!user || cloudReadyUserId !== user.id || !chats.length) return;
+    const timeout = window.setTimeout(async () => {
+      const rows = chats.map((item) => ({
+        id: item.id,
+        user_id: user.id,
+        title: item.title,
+        messages: item.messages,
+        updated_at: new Date().toISOString(),
+      }));
+      const { error } = await getSupabase().from("chats").upsert(rows, { onConflict: "id" });
+      if (error) setSyncError(error.message);
+      else setSyncError("");
+    }, 500);
+    return () => window.clearTimeout(timeout);
+  }, [chats, user, cloudReadyUserId]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chats, cur, busy]);
+
+  async function handleAuth() {
+    setAuthError("");
+    if (!email.trim() || !password) {
+      setAuthError("اكتب البريد الإلكتروني وكلمة المرور أولًا.");
+      return;
+    }
+    setAuthBusy(true);
+    try {
+      const client = getSupabase();
+      if (authMode === "signup") {
+        const { data, error } = await client.auth.signUp({ email: email.trim(), password });
+        if (error) throw error;
+        if (!data.session) {
+          setAuthError("تم إنشاء الحساب. افتح بريدك الإلكتروني واضغط رابط التأكيد، ثم سجّل الدخول.");
+        } else {
+          setAuthError("");
+        }
+      } else {
+        const { error } = await client.auth.signInWithPassword({ email: email.trim(), password });
+        if (error) throw error;
+      }
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "تعذر تسجيل الدخول.");
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function handleSignOut() {
+    setAuthError("");
+    try {
+      const { error } = await getSupabase().auth.signOut();
+      if (error) throw error;
+      setCloudReadyUserId(null);
+      setSyncError("");
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "تعذر تسجيل الخروج.");
+    }
+  }
 
   function newChat() {
     const c: Chat = { id: uid(), title: "محادثة جديدة", messages: [] };
@@ -61,6 +202,10 @@ export default function Home() {
   }
 
   function delChat(id: string) {
+    if (user && cloudReadyUserId === user.id) {
+      getSupabase().from("chats").delete().eq("id", id).eq("user_id", user.id)
+        .then(({ error }) => { if (error) setSyncError(error.message); });
+    }
     const rest = chats.filter((c) => c.id !== id);
     if (!rest.length) {
       const c: Chat = { id: uid(), title: "محادثة جديدة", messages: [] };
@@ -229,6 +374,27 @@ export default function Home() {
       <style>{css}</style>
       <aside className={"side" + (menu ? " open" : "")}>
         <div className="logo">4hab AI ✦</div>
+        <section className="auth-panel">
+          {user ? (
+            <>
+              <div className="auth-status">مسجل الدخول</div>
+              <div className="auth-email" title={user.email || ""}>{user.email}</div>
+              <button className="auth-button" onClick={handleSignOut}>تسجيل الخروج</button>
+            </>
+          ) : (
+            <>
+              <div className="auth-status">{authMode === "signin" ? "تسجيل الدخول" : "إنشاء حساب جديد"}</div>
+              <input className="auth-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="البريد الإلكتروني" autoComplete="email" />
+              <input className="auth-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="كلمة المرور" autoComplete={authMode === "signin" ? "current-password" : "new-password"} />
+              <button className="auth-button" onClick={handleAuth} disabled={authBusy || !authReady}>{authBusy ? "انتظر..." : authMode === "signin" ? "دخول" : "إنشاء الحساب"}</button>
+              <button className="auth-switch" onClick={() => { setAuthMode(authMode === "signin" ? "signup" : "signin"); setAuthError(""); }}>
+                {authMode === "signin" ? "ليس لديك حساب؟ أنشئ حسابًا" : "لديك حساب؟ سجّل الدخول"}
+              </button>
+            </>
+          )}
+          {authError && <div className="auth-error">{authError}</div>}
+          {syncError && <div className="auth-error">مزامنة المحادثات: {syncError}</div>}
+        </section>
         <button className="new" onClick={newChat}>＋ محادثة جديدة</button>
         <div className="list">
           {chats.map((c) => (
@@ -308,6 +474,15 @@ export default function Home() {
 
 const css = `
 *{box-sizing:border-box}
+.auth-panel{padding:10px;margin:0 0 14px;border:1px solid #292929;border-radius:12px;background:#101010;display:flex;flex-direction:column;gap:8px}
+.auth-status{font-size:13px;color:#eee;font-weight:600}
+.auth-email{font-size:12px;color:#aaa;overflow-wrap:anywhere}
+.auth-input{width:100%;border:1px solid #383838;background:#080808;color:#fff;border-radius:8px;padding:9px 10px;font:inherit;font-size:13px;outline:none}
+.auth-input:focus{border-color:#777}
+.auth-button{width:100%;border:0;border-radius:8px;background:#f2f2f2;color:#111;padding:9px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.auth-button:disabled{opacity:.5;cursor:not-allowed}
+.auth-switch{border:0;background:transparent;color:#bbb;font:inherit;font-size:11px;cursor:pointer;padding:4px}
+.auth-error{font-size:11px;line-height:1.6;color:#ffb4a9;overflow-wrap:anywhere}
 html,body{margin:0;height:100%;background:#000;color:#ececec;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,sans-serif}
 body{overflow:hidden}
 button{font:inherit}
