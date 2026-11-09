@@ -213,7 +213,7 @@ export default function Home() {
     setAuthBusy(true);
     try {
       const { error } = await getSupabase().auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: window.location.origin,
+        redirectTo: "https://4hab-ai.vercel.app",
       });
       if (error) throw error;
       setAuthError("إذا كان البريد مسجلًا، ستصلك رسالة فيها رابط إعادة تعيين كلمة المرور. افحص صندوق الوارد والرسائل غير المرغوب فيها.");
