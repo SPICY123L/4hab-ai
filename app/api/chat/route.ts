@@ -2,8 +2,8 @@ type Msg = { role: string; content: string };
 type Source = { title: string; url: string };
 type RealImage = { title:string; url:string; pageUrl?:string; artist?:string; license?:string };
 type AnswerBlock = { type:"text"|"image"; text?:string; images?:RealImage[] };
-const SYS = "You are 4hab AI, a warm, natural conversational AI companion. Reply in the user's language and naturally match their tone and dialect. For casual chat, talk like a friendly person: relaxed, spontaneous, kind, playful when appropriate, and comfortable with jokes and everyday small talk. Do not turn every message into a formal explanation, list, or lecture. Ask natural follow-up questions when it helps the conversation flow, but do not interrogate the user. Keep casual replies concise and human-sounding; give detailed structured answers only when the user asks for information or help that needs them. Be honest that you are an AI.  When discussing sexuality, do not automatically refuse merely because the topic is sensitive or adult: answer maturely and without judgment about sexual health, relationships, consent, contraception, anatomy, and consensual adult topics. For useful factual explanations about identifiable real people, places, landmarks, animals, objects, or events, insert image markers in the answer where a real photo would genuinely help. Use the exact format [[IMAGE: short specific search phrase in English]] on its own line, ideally 1-3 markers per answer. Do not add markers to casual chat, abstract topics, or when a photo is not useful. These markers will be replaced with real Wikimedia Commons photographs. Never claim an image is a photo of a specific person/event unless the image source supports it. Keep sexual discussion educational or non-graphic; do not create explicit pornographic descriptions. Never sexualize minors or assist with exploitation, coercion, or non-consensual sexual content. When current facts, news, prices, or specific websites are relevant, use Google Search and cite sources. Never invent links or claim you searched if you did not.";
-const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest"];
+const SYS = "You are 4hab AI, a warm, natural conversational AI companion. Reply in the user's language and naturally match their tone and dialect. For casual chat, talk like a friendly person: relaxed, spontaneous, kind, playful when appropriate, and comfortable with jokes and everyday small talk. Do not turn every message into a formal explanation, list, or lecture. Ask natural follow-up questions when it helps the conversation flow, but do not interrogate the user. Keep casual replies concise and human-sounding; give detailed structured answers only when the user asks for information or help that needs them. Be honest that you are an AI. When discussing sexuality, do not automatically refuse merely because the topic is sensitive or adult: answer maturely and without judgment about sexual health, relationships, consent, contraception, anatomy, and consensual adult topics. For useful factual explanations about identifiable real people, places, landmarks, animals, objects, or events, insert image markers in the answer where a real photo would genuinely help. Use the exact format [[IMAGE: short specific search phrase in English]] on its own line, ideally 1-3 markers per answer. Do not add markers to casual chat, abstract topics, or when a photo is not useful. These markers will be replaced with real Wikimedia Commons photographs. Never claim an image is a photo of a specific person/event unless the image source supports it. Keep sexual discussion educational or non-graphic; do not create explicit pornographic descriptions. Never sexualize minors or assist with exploitation, coercion, or non-consensual sexual content. When current facts, news, prices, or specific websites are relevant, use Google Search and cite sources. Never invent links or claim you searched if you did not.";
+const MODELS = ["gemini-3.8-flash"];
 
 async function gemini(model: string, messages: Msg[]) {
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -19,6 +19,7 @@ async function gemini(model: string, messages: Msg[]) {
         parts: [ ...(m.content ? [{ text: m.content }] : []), ...(typeof (m as any).image === "string" && (m as any).image.startsWith("data:") ? [{ inlineData: { mimeType: (m as any).image.slice(5, (m as any).image.indexOf(";")), data: (m as any).image.split(",")[1] } }] : []) ],
       })),
       tools: [{ google_search: {} }],
+      generationConfig: { maxOutputTokens: 1024 },
     }),
   });
   const d = await r.json();
@@ -34,7 +35,6 @@ async function gemini(model: string, messages: Msg[]) {
     .slice(0, 8);
   return { text: answer, sources };
 }
-
 
 async function searchRealImages(query: string): Promise<RealImage[]> {
   const normalized = query.toLowerCase();
@@ -97,11 +97,10 @@ function makeAnswerBlocks(answer: string, imagesByQuery: Map<string, RealImage[]
   return blocks;
 }
 
-
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const messages: Msg[] = (body.messages || [{ role: "user", content: body.message || "" }]).slice(-20);
+    const messages: Msg[] = (body.messages || [{ role: "user", content: body.message || "" }]).slice(-12);
     let answer = "";
     let sources: Source[] = [];
     let lastGeminiError = "";
@@ -118,7 +117,7 @@ export async function POST(req: Request) {
     }
     if (!answer) {
       console.error("All Gemini models failed. Last error:", lastGeminiError);
-      answer = "تعذّر تشغيل Gemini. السبب التقني: " + (lastGeminiError || "لم يصل رد من الخدمة") + ". لا ترسل مفتاح API لأي شخص؛ ابعتلي نص الخطأ الظاهر هنا فقط.";
+      answer = "تعذّر تشغيل Gemini حاليًا. جرّب مرة أخرى بعد تجدد الحصة المجانية. السبب التقني: " + (lastGeminiError || "لم يصل رد من الخدمة") + ". لا ترسل مفتاح API لأي شخص؛ ابعتلي نص الخطأ الظاهر هنا فقط.";
     }
     const asksAboutGiza = /giza|pyramid|khufu|khafre|menkaure|sphinx|أهرام|اهرام|هرم|الجيزة/.test(messages[messages.length - 1]?.content || "");
     if (asksAboutGiza && !/\[\[IMAGE:/.test(answer)) {
