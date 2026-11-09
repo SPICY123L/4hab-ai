@@ -560,14 +560,21 @@ export default function Home() {
   }
 
   return (
-    <div className={"app" + (lightTheme ? " light" : "") + (compactMode ? " compact" : "") + (fontScale !== "normal" ? " font-" + fontScale : "")} dir="rtl">
+    <div className={"app" + (lightTheme ? " light" : "") + (compactMode ? " compact" : "") + (fontScale !== "normal" ? " font-" + fontScale : "")} dir={locale === "ar" ? "rtl" : "ltr"}>
       <style>{css}</style>
       <aside className={"side" + (menu ? " open" : "")}>
         <div className="logo">4hab AI ✦</div>
-        <button className="new" onClick={newChat}>＋ محادثة جديدة</button>
+        <button className="new" onClick={() => { setActiveSection("chat"); newChat(); }}>＋ {t("newChat")}</button>
+        <nav className="side-nav">
+          <button className={activeSection === "images" ? "selected" : ""} onClick={() => setActiveSection("images")}>▧ {t("images")}</button>
+          <button className={activeSection === "tasks" ? "selected" : ""} onClick={() => setActiveSection("tasks")}>◷ {t("tasks")}</button>
+          <button className={activeSection === "library" ? "selected" : ""} onClick={() => setActiveSection("library")}>▤ {t("library")}</button>
+          <button className={activeSection === "plugins" ? "selected" : ""} onClick={() => setActiveSection("plugins")}>⊞ {t("plugins")}</button>
+          <button className={activeSection === "explore" ? "selected" : ""} onClick={() => setActiveSection("explore")}>✧ {t("explore")}</button>
+        </nav>
         <div className="chat-list-heading">
-          <span>{showArchived ? "المحادثات المؤرشفة" : "محادثاتك"}</span>
-          <button onClick={() => setShowArchived(!showArchived)}>{showArchived ? "العودة للمحادثات" : "الأرشيف"}</button>
+          <span>{showArchived ? "المحادثات المؤرشفة" : t("chats")}</span>
+          <button onClick={() => setShowArchived(!showArchived)}>{showArchived ? "العودة للمحادثات" : t("archive")}</button>
         </div>
         <div className="list">
           {visibleChats.map((c) => (
@@ -636,7 +643,7 @@ export default function Home() {
               <div className="setting-row"><div><strong>حجم الخط</strong><small>حجم النص داخل المحادثة</small></div><select className="settings-select" value={fontScale} onChange={(e) => { setFontScale(e.target.value); savePreference("4hab-font-scale",e.target.value); }}><option value="small">صغير</option><option value="normal">متوسط</option><option value="large">كبير</option></select></div>
               <h3 className="settings-section-title">المحادثة والكتابة</h3>
               <div className="setting-row"><div><strong>Enter للإرسال</strong><small>إرسال الرسالة بزر Enter</small></div><button className="theme-switch" onClick={() => { const v=!enterToSend; setEnterToSend(v); savePreference("4hab-enter-send",v); }}>{enterToSend ? "مفعّل" : "متوقف"}</button></div>
-              <div className="setting-row"><div><strong>اللغة</strong><small>لغة واجهة الموقع</small></div><span className="setting-value">العربية</span></div>
+              <div className="setting-row"><div><strong>{t("language")}</strong><small>غيّر لغة واجهة 4hab AI</small></div><select className="settings-select" value={locale} onChange={(e) => { setLocale(e.target.value); savePreference("4hab-language",e.target.value); }}><option value="ar">العربية</option><option value="en">English</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português (Brasil)</option></select></div>
               <h3 className="settings-section-title">الحساب والخصوصية</h3>
               <div className="setting-row"><div><strong>البريد الإلكتروني</strong><small>{user?.email || "حساب ضيف"}</small></div><span className="setting-value">{user ? "متصل" : "ضيف"}</span></div>
               <div className="setting-row"><div><strong>الملف الشخصي</strong><small>الاسم وصورة الحساب</small></div><button className="theme-switch" onClick={() => setPanel("profile")}>فتح</button></div>
@@ -657,10 +664,10 @@ export default function Home() {
       <main className="main">
         <header className="top">
           <button className="burger" onClick={() => setMenu(true)} aria-label="فتح القائمة">☰</button>
-          <span>{chat?.title || "4hab AI"}</span>
+          <span>{activeSection === "chat" ? (chat?.title || "4hab AI") : activeSection === "images" ? t("images") : activeSection === "tasks" ? t("tasks") : activeSection === "library" ? t("library") : activeSection === "plugins" ? t("plugins") : t("explore")}</span>
         </header>
-        <div className="msgs">
-          {chat && chat.messages.length === 0 && <div className="empty">كيف أقدر أساعدك اليوم؟</div>}
+        {activeSection === "chat" ? <div className="msgs">
+          {chat && chat.messages.length === 0 && <div className="empty">{t("empty")}</div>}
           {chat?.messages.map((m, i) => (
             <div key={i} className={"msg " + m.role}>
               {m.attachment && <img className="uploaded" src={m.attachment} alt="الصورة المرفقة" />}
@@ -698,16 +705,22 @@ export default function Home() {
           ))}
           {busy && <div className="msg assistant">…</div>}
           <div ref={endRef} />
-        </div>
+        </div> : <section className="section-view">
+          {activeSection === "images" || activeSection === "library" ? (
+            imageLibrary.length ? <div className="library-grid">{imageLibrary.map((item, index) => <a key={item.url + index} href={item.url} target="_blank" rel="noreferrer"><img src={item.url} alt={item.title}/><span>{item.title}</span></a>)}</div> : <div className="section-empty">{activeSection === "images" ? "الصور التي تنشئها أو ترفقها ستظهر هنا." : "مكتبتك فارغة حاليًا. الصور والمرفقات من محادثاتك ستظهر هنا."}</div>
+          ) : activeSection === "tasks" ? <div className="section-empty"><h2>المهام المجدولة</h2><p>جدولة المهام والتنبيهات تحتاج خدمة خلفية وربط إشعارات قبل تفعيلها.</p></div>
+          : activeSection === "plugins" ? <div className="section-empty"><h2>المكونات الإضافية</h2><p>سيظهر هنا ربط الخدمات الخارجية. لم يتم توصيل أي إضافات بعد.</p></div>
+          : <div className="section-empty"><h2>استكشف 4hab AI</h2><p>جرّب المحادثة، إنشاء الصور، رفع الصور، والبحث عن صور حقيقية من داخل المحادثة.</p><button className="panel-primary" onClick={() => { setActiveSection("chat"); newChat(); }}>＋ {t("newChat")}</button></div>}
+        </section>}
         {voiceMode && <div style={{position:"absolute",bottom:82,left:0,right:0,display:"flex",justifyContent:"center",zIndex:5,pointerEvents:"none"}}><div style={{pointerEvents:"auto",background:"#222",border:"1px solid #444",borderRadius:24,padding:"9px 14px",display:"flex",alignItems:"center",gap:12,color:"#eee",fontSize:13}}><span>{voiceStatus}</span><button onClick={stopVoiceChat} style={{border:0,borderRadius:18,padding:"7px 12px",background:"#eee",color:"#111",cursor:"pointer"}}>إنهاء المكالمة</button></div></div>}
-        <div className="bar">
+        {activeSection === "chat" && <div className="bar">
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f=e.target.files?.[0]; if(!f)return; if(f.size>8*1024*1024){alert("حجم الصورة يجب أن يكون أقل من 8MB");e.target.value="";return;} const reader=new FileReader(); reader.onload=()=>{setAttachment(String(reader.result));setAttachmentName(f.name);}; reader.readAsDataURL(f); e.target.value=""; }} />
           <div className="composer">
             <button className="inside-tool plus-tool" onClick={() => fileRef.current?.click()} title="إرفاق صورة" aria-label="إرفاق صورة">＋</button>
             <textarea
               rows={1}
               value={input}
-              placeholder={imgMode ? "اوصف الصورة…" : "اسأل 4hab AI أي شيء…"}
+              placeholder={imgMode ? "اوصف الصورة…" : t("placeholder")}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (enterToSend && e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             />
@@ -715,7 +728,7 @@ export default function Home() {
             <button className={"inside-tool mic-tool" + (voiceMode || listening ? " selected" : "")} onClick={toggleVoiceInput} title={voiceMode ? "إنهاء المكالمة الصوتية" : "بدء محادثة صوتية"} aria-label="محادثة صوتية"><svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="12" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-4 0h8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg></button>
             <button className="send" onClick={send} disabled={busy || (!input.trim() && !attachment)} aria-label="إرسال">↑</button>
           </div>
-        </div>
+        </div>}
       </main>
     </div>
   );
