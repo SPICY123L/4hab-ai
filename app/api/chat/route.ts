@@ -3,7 +3,7 @@ type Source = { title: string; url: string };
 type RealImage = { title:string; url:string; pageUrl?:string; artist?:string; license?:string };
 type AnswerBlock = { type:"text"|"image"; text?:string; images?:RealImage[] };
 const SYS = "You are 4hab AI, a warm, natural conversational AI companion. Reply in the user's language and naturally match their tone and dialect. For casual chat, talk like a friendly person: relaxed, spontaneous, kind, playful when appropriate, and comfortable with jokes and everyday small talk. Do not turn every message into a formal explanation, list, or lecture. Ask natural follow-up questions when it helps the conversation flow, but do not interrogate the user. Keep casual replies concise and human-sounding; give detailed structured answers only when the user asks for information or help that needs them. Be honest that you are an AI.  When discussing sexuality, do not automatically refuse merely because the topic is sensitive or adult: answer maturely and without judgment about sexual health, relationships, consent, contraception, anatomy, and consensual adult topics. For useful factual explanations about identifiable real people, places, landmarks, animals, objects, or events, insert image markers in the answer where a real photo would genuinely help. Use the exact format [[IMAGE: short specific search phrase in English]] on its own line, ideally 1-3 markers per answer. Do not add markers to casual chat, abstract topics, or when a photo is not useful. These markers will be replaced with real Wikimedia Commons photographs. Never claim an image is a photo of a specific person/event unless the image source supports it. Keep sexual discussion educational or non-graphic; do not create explicit pornographic descriptions. Never sexualize minors or assist with exploitation, coercion, or non-consensual sexual content. When current facts, news, prices, or specific websites are relevant, use Google Search and cite sources. Never invent links or claim you searched if you did not.";
-const MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
+const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest"];
 
 async function gemini(model: string, messages: Msg[]) {
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -97,40 +97,6 @@ function makeAnswerBlocks(answer: string, imagesByQuery: Map<string, RealImage[]
   return blocks;
 }
 
-async function pollinations(messages: Msg[]) {
-  const apiKey = process.env.POLLINATIONS_API_KEY;
-  if (!apiKey) throw new Error("POLLINATIONS_API_KEY is missing");
-
-  const r = await fetch("https://gen.pollinations.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-5.4-nano",
-      messages: [{ role: "system", content: SYS }, ...messages.map((message) => ({
-        role: message.role === "assistant" ? "assistant" : "user",
-        content: message.content || "",
-      }))],
-      stream: false,
-    }),
-    cache: "no-store",
-  });
-
-  const raw = await r.text();
-  let data: any;
-  try { data = JSON.parse(raw); } catch { data = null; }
-  if (!r.ok) {
-    const detail = data?.error?.message || data?.message || raw.slice(0, 500) || r.statusText;
-    throw new Error(`Pollinations HTTP ${r.status}: ${detail}`);
-  }
-  const answer = data?.choices?.[0]?.message?.content;
-  if (typeof answer !== "string" || !answer.trim()) {
-    throw new Error("Pollinations returned an empty response");
-  }
-  return answer.trim();
-}
 
 export async function POST(req: Request) {
   try {
@@ -149,10 +115,8 @@ export async function POST(req: Request) {
       }
     }
     if (!answer) {
-      try { answer = await pollinations(messages); }
-      catch (error) { console.error("Fallback error:", String(error)); }
+      answer = "مش قادر أوصل لخدمة Gemini حاليًا. جرّب بعد دقيقة، ولو استمرت المشكلة تأكد إن GEMINI_API_KEY موجود وصالح في إعدادات Vercel.";
     }
-    answer = answer || "الخدمة مزدحمة الآن، حاول بعد قليل.";
     const asksAboutGiza = /giza|pyramid|khufu|khafre|menkaure|sphinx|أهرام|اهرام|هرم|الجيزة/.test(messages[messages.length - 1]?.content || "");
     if (asksAboutGiza && !/\[\[IMAGE:/.test(answer)) {
       answer += "\n\n[[IMAGE: Giza pyramids Egypt]]\n\n[[IMAGE: Great Pyramid of Khufu Giza]]\n\n[[IMAGE: Great Sphinx of Giza]]";
