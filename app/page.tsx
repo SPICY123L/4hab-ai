@@ -597,7 +597,7 @@ export default function Home() {
     <div className={"app" + (lightTheme ? " light" : "") + (compactMode ? " compact" : "") + (fontScale !== "normal" ? " font-" + fontScale : "")} dir={locale === "ar" ? "rtl" : "ltr"}>
       <style>{css}</style>
       <aside className={"side" + (menu ? " open" : "")}>
-        <div className="logo">4hab AI ✦</div>
+        <div className="logo">4hab AI</div>
         <button className="new" onClick={() => { setActiveSection("chat"); newChat(); }}>＋ {t("newChat")}</button>
         <nav className="side-nav">
           <button className={activeSection === "images" ? "selected" : ""} onClick={() => setActiveSection("images")}>▧ {t("images")}</button>
