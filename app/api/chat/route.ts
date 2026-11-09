@@ -37,24 +37,46 @@ async function gemini(model: string, messages: Msg[]) {
 
 
 async function searchRealImages(query: string): Promise<RealImage[]> {
-  const params = new URLSearchParams({
-    action: "query", format: "json", generator: "search",
-    gsrsearch: query, gsrnamespace: "6", gsrlimit: "3",
-    prop: "imageinfo", iiprop: "url|extmetadata", iiurlwidth: "900",
-  });
-  const response = await fetch(`https://commons.wikimedia.org/w/api.php?${params.toString()}`, {
-    headers: { "User-Agent": "4habAI/1.0 (real image search)" }, cache: "no-store",
-  });
-  if (!response.ok) return [];
-  const data = await response.json();
-  const pages = Object.values(data.query?.pages || {}) as any[];
+  const normalized = query.toLowerCase();
+  const fallbacks = /giza|pyramid|khufu|khafre|menkaure|sphinx|ahram|هرم|أهرام/.test(normalized)
+    ? [query, "Giza pyramids Egypt", "Great Pyramid of Giza Khufu", "Great Sphinx Giza"]
+    : [query];
+  const collected: RealImage[] = [];
+  const seen = new Set<string>();
   const clean = (value?: string) => (value || "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/&quot;/g, '"').replace(/&amp;/g, "&").trim().slice(0, 250);
-  return pages.flatMap((page) => {
-    const info = page.imageinfo?.[0];
-    const url = info?.thumburl || info?.url;
-    if (!url || !/^https:\/\//.test(url)) return [];
-    return [{ title:(page.title || "Photo").replace(/^File:/, ""), url, pageUrl:info.descriptionurl || "", artist:clean(info.extmetadata?.Artist?.value), license:clean(info.extmetadata?.LicenseShortName?.value) }];
-  }).slice(0, 3);
+  for (const term of fallbacks) {
+    if (collected.length >= 3) break;
+    try {
+      const params = new URLSearchParams({
+        action: "query", format: "json", origin: "*", generator: "search",
+        gsrsearch: term, gsrnamespace: "6", gsrlimit: "8",
+        prop: "imageinfo", iiprop: "url|extmetadata", iiurlwidth: "900",
+      });
+      const response = await fetch(`https://commons.wikimedia.org/w/api.php?${params.toString()}`, {
+        headers: { "User-Agent": "4habAI/1.1 (real image search)" }, cache: "no-store",
+      });
+      if (!response.ok) continue;
+      const data = await response.json();
+      const pages = Object.values(data.query?.pages || {}) as any[];
+      for (const page of pages) {
+        const info = page.imageinfo?.[0];
+        const url = info?.thumburl || info?.url;
+        if (!url || !/^https:\/\//.test(url) || seen.has(url)) continue;
+        seen.add(url);
+        collected.push({
+          title: (page.title || "Photo").replace(/^File:/, ""),
+          url,
+          pageUrl: info.descriptionurl || "",
+          artist: clean(info.extmetadata?.Artist?.value),
+          license: clean(info.extmetadata?.LicenseShortName?.value),
+        });
+        if (collected.length >= 3) break;
+      }
+    } catch (error) {
+      console.error("Wikimedia image search failed:", term, String(error));
+    }
+  }
+  return collected;
 }
 
 function makeAnswerBlocks(answer: string, imagesByQuery: Map<string, RealImage[]>): AnswerBlock[] {
