@@ -94,13 +94,13 @@ export default function Home() {
     }));
 
     try {
-      const normalizedText = text.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").trim();
-      const imageIntent = /(?:^|\\s)(?:صور|صوره|صورة|صورلي|صوري|وريني|هات|ابعتلي|ابعت|اعرضلي)(?:\\s|$)/i.test(normalizedText);
+      const normalizedText = text.normalize("NFD").replace(/[\u0300-\\u036f]/g, "").trim();
+      const imageIntent = /(?:^|\s)(?:صور|صوره|صورة|صورلي|صوري|وريني|هات|ابعتلي|ابعت|اعرضلي)(?:\s|$)/i.test(normalizedText);
       const isSalahNameOnly = normalizedText === "محمد صلاح";
       const wantsRealImages = imageIntent || isSalahNameOnly;
       const imageQuery = normalizedText
-        .replace(/^(?:من فضلك\\s*)?(?:صورلي|صوري|صور|صوره|صورة|وريني|هات|ابعتلي|ابعت|اعرضلي)\\s*/i, "")
-        .replace(/\\s*(?:صور|صوره|صورة)$/i, "")
+        .replace(/^(?:من فضلك\s*)?(?:صورلي|صوري|صور|صوره|صورة|وريني|هات|ابعتلي|ابعت|اعرضلي)\s*/i, "")
+        .replace(/\s*(?:صور|صوره|صورة)$/i, "")
         .trim() || normalizedText;
       if (wantsRealImages && !imageData) {
         const r = await fetch(`/api/search-images?q=${encodeURIComponent(imageQuery)}`);
@@ -110,7 +110,7 @@ export default function Home() {
           ...c,
           messages: [...c.messages, {
             role: "assistant",
-            content: d.images?.length ? "دي صور حقيقية لمحمد صلاح من ويكيميديا كومنز:" : "ملقيتش صور مناسبة لمحمد صلاح في مصدر الصور المتاح.",
+            content: d.images?.length ? `دي صور حقيقية لـ ${imageQuery} من ويكيميديا كومنز:` : `ملقيتش صور مناسبة لـ ${imageQuery} في مصدر الصور المتاح.`,
             images: d.images || [],
           }],
         }));
