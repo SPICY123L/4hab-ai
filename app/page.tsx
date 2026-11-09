@@ -94,10 +94,16 @@ export default function Home() {
     }));
 
     try {
-      const normalizedText = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-      const wantsRealImages = normalizedText === "محمد صلاح" || /(?:صور|صوره|صورة|ابعت|هات|وريني).*(?:محمد صلاح)|(?:محمد صلاح).*(?:صور|صوره|صورة)/i.test(normalizedText);
+      const normalizedText = text.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").trim();
+      const imageIntent = /(?:^|\\s)(?:صور|صوره|صورة|صورلي|صوري|وريني|هات|ابعتلي|ابعت|اعرضلي)(?:\\s|$)/i.test(normalizedText);
+      const isSalahNameOnly = normalizedText === "محمد صلاح";
+      const wantsRealImages = imageIntent || isSalahNameOnly;
+      const imageQuery = normalizedText
+        .replace(/^(?:من فضلك\\s*)?(?:صورلي|صوري|صور|صوره|صورة|وريني|هات|ابعتلي|ابعت|اعرضلي)\\s*/i, "")
+        .replace(/\\s*(?:صور|صوره|صورة)$/i, "")
+        .trim() || normalizedText;
       if (wantsRealImages && !imageData) {
-        const r = await fetch(`/api/search-images?q=${encodeURIComponent("Mohamed Salah")}`);
+        const r = await fetch(`/api/search-images?q=${encodeURIComponent(imageQuery)}`);
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || "تعذر البحث عن الصور.");
         update(id, (c) => ({
