@@ -4,7 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { getSupabase } from "../lib/supabase/client";
 
 type Msg = { role: "user" | "assistant"; content: string; image?: string; attachment?: string; sources?: {title:string;url:string}[]; images?: {title:string;url:string;pageUrl?:string;artist?:string;license?:string}[] };
-type Chat = { id: string; title: string; messages: Msg[] };
+type Chat = { id: string; title: string; messages: Msg[]; pinned?: boolean; archived?: boolean };
 
 const KEY = "4hab-chats";
 const uid = () => typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 3 | 8)).toString(16); });
@@ -46,6 +46,8 @@ export default function Home() {
   const [lightTheme, setLightTheme] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [accountMenu, setAccountMenu] = useState(false);
+  const [activeChatMenu, setActiveChatMenu] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState("");
   const [compactMode, setCompactMode] = useState(false);
   const [enterToSend, setEnterToSend] = useState(true);
@@ -547,19 +549,31 @@ export default function Home() {
       <aside className={"side" + (menu ? " open" : "")}>
         <div className="logo">4hab AI ✦</div>
         <button className="new" onClick={newChat}>＋ محادثة جديدة</button>
+        <div className="chat-list-heading">
+          <span>{showArchived ? "المحادثات المؤرشفة" : "محادثاتك"}</span>
+          <button onClick={() => setShowArchived(!showArchived)}>{showArchived ? "العودة للمحادثات" : "الأرشيف"}</button>
+        </div>
         <div className="list">
-          {chats.map((c) => (
-            <div key={c.id} className={"item" + (c.id === cur ? " on" : "")} onClick={() => { setCur(c.id); setMenu(false); }}>
-              <span>{c.title}</span>
-              <button onClick={(e) => { e.stopPropagation(); delChat(c.id); }} aria-label="حذف">🗑</button>
+          {visibleChats.map((c) => (
+            <div key={c.id} className={"item chat-item" + (c.id === cur ? " on" : "")} onClick={() => { setCur(c.id); setMenu(false); setActiveChatMenu(null); }}>
+              <span className="chat-item-title">{c.pinned ? "📌 " : ""}{c.title}</span>
+              <button className="chat-more" onClick={(e) => { e.stopPropagation(); setActiveChatMenu(activeChatMenu === c.id ? null : c.id); }} aria-label="خيارات المحادثة">⋯</button>
+              {activeChatMenu === c.id && <div className="chat-context-menu" onClick={(e) => e.stopPropagation()}>
+                <button onClick={() => togglePin(c.id)}>{c.pinned ? "إلغاء التثبيت" : "تثبيت المحادثة"}</button>
+                <button onClick={() => renameChat(c.id)}>إعادة تسمية</button>
+                <button onClick={() => shareChat(c.id)}>مشاركة</button>
+                <button onClick={() => toggleArchive(c.id)}>{c.archived ? "إلغاء الأرشفة" : "أرشفة"}</button>
+                <button className="danger" onClick={() => { setActiveChatMenu(null); delChat(c.id); }}>حذف المحادثة</button>
+              </div>}
             </div>
           ))}
+          {!visibleChats.length && <div className="chat-empty">{showArchived ? "لا توجد محادثات مؤرشفة" : "لا توجد محادثات بعد"}</div>}
         </div>
         <div className="side-bottom">
           <input ref={avatarFileRef} type="file" accept="image/*" hidden onChange={(e) => { saveAvatar(e.target.files?.[0]); e.currentTarget.value = ""; }} />
           <button className="side-account" onClick={() => setAccountMenu(!accountMenu)}>
             {avatarUrl ? <img className="account-avatar" src={avatarUrl} alt="صورة الحساب" /> : <span className="account-avatar">{(displayName || "ض").slice(0,1)}</span>}
-            <span className="account-copy"><strong>{displayName}</strong><small>{user?.email || "حساب ضيف"}</small></span>
+            <span className="account-copy"><strong>{displayName}</strong></span>
             <span className="account-more">⋯</span>
           </button>
           {accountMenu && <div className="account-menu">
@@ -725,6 +739,16 @@ button{font:inherit}
 .new{background:transparent;color:#f2f2f2;border:1px solid #333;border-radius:12px;padding:11px 13px;font:inherit;text-align:right;cursor:pointer;margin:0 0 16px;transition:background .15s}
 .new:hover,.item:hover,.item.on{background:#202020}
 .list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.chat-list-heading{display:flex;align-items:center;justify-content:space-between;padding:3px 8px 8px;color:#999;font-size:11px}
+.chat-list-heading button{border:0;background:transparent;color:#aaa;font:inherit;cursor:pointer}
+.chat-item{position:relative;padding:9px 8px}
+.chat-item-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.chat-more{font-size:20px!important;opacity:.75!important;padding:0 4px!important}
+.chat-context-menu{position:absolute;top:34px;left:5px;z-index:45;min-width:160px;padding:5px;background:#252525;border:1px solid #444;border-radius:10px;box-shadow:0 8px 28px #000b;display:flex;flex-direction:column}
+.chat-context-menu button{width:100%;text-align:right;padding:9px 10px;border:0;background:transparent;color:#eee;font:inherit;font-size:12px;cursor:pointer;border-radius:6px}
+.chat-context-menu button:hover{background:#383838}
+.chat-context-menu button.danger{color:#ff9b91}
+.chat-empty{padding:15px 9px;color:#888;font-size:12px}
 .item{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:10px;border-radius:10px;cursor:pointer;color:#d6d6d6;font-size:14px}
 .item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .item button{background:none;border:0;cursor:pointer;opacity:.6;color:inherit}
@@ -780,8 +804,8 @@ button{font:inherit}
 .account-avatar,.profile-big-avatar{display:grid;place-items:center;flex:none;border-radius:50%;background:#3c3c3c;color:#fff;font-weight:800}
 .account-avatar{width:36px;height:36px;font-size:15px}
 .account-copy{min-width:0;flex:1}
-.account-copy strong,.account-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.account-copy strong{font-size:13px}.account-copy small{font-size:10px;color:#999;margin-top:2px}
+.account-copy strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-copy strong{font-size:13px}
 .account-more{font-size:20px;color:#999}
 .settings-entry{width:100%;padding:10px;border:0;border-radius:9px;background:transparent;color:#bbb;text-align:right;cursor:pointer;font-size:13px}
 .panel-shade{position:fixed;inset:0;z-index:60;background:#000a;display:grid;place-items:center;padding:18px}
