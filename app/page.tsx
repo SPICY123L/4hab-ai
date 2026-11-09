@@ -578,7 +578,7 @@ export default function Home() {
         </div>
         <div className="list">
           {visibleChats.map((c) => (
-            <div key={c.id} className={"item chat-item" + (c.id === cur ? " on" : "")} onClick={() => { setCur(c.id); setMenu(false); setActiveChatMenu(null); }}>
+            <div key={c.id} className={"item chat-item" + (c.id === cur ? " on" : "")} onClick={() => { setCur(c.id); setMenu(false); setActiveChatMenu(null); setActiveSection("chat"); }}>
               <span className="chat-item-title">{c.pinned ? "📌 " : ""}{c.title}</span>
               <button className="chat-more" onClick={(e) => { e.stopPropagation(); setActiveChatMenu(activeChatMenu === c.id ? null : c.id); }} aria-label="خيارات المحادثة">⋯</button>
               {activeChatMenu === c.id && <div className="chat-context-menu" onClick={(e) => e.stopPropagation()}>
@@ -736,6 +736,18 @@ export default function Home() {
 
 const css = `
 *{box-sizing:border-box}
+.side-nav{display:flex;flex-direction:column;gap:3px;margin:0 0 13px}
+.side-nav button{display:flex;align-items:center;gap:11px;padding:10px;border:0;border-radius:9px;background:transparent;color:#ddd;text-align:start;cursor:pointer;font:inherit;font-size:13px}
+.side-nav button:hover,.side-nav button.selected{background:#252525;color:#fff}
+.section-view{flex:1;overflow:auto;padding:28px;max-width:1000px;width:100%;margin:0 auto}
+.section-empty{min-height:55vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#aaa;gap:12px;line-height:1.7}
+.section-empty h2{color:#eee;margin:0;font-size:22px}
+.section-empty p{max-width:520px;margin:0}
+.library-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+.library-grid a{display:flex;flex-direction:column;gap:7px;color:#ddd;text-decoration:none;background:#171717;border:1px solid #333;border-radius:12px;padding:8px;overflow:hidden}
+.library-grid img{width:100%;height:150px;object-fit:cover;border-radius:8px}
+.library-grid span{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
 
 .account-menu{display:flex;flex-direction:column;gap:3px;padding:6px;margin:4px 0 0;background:#191919;border:1px solid #333;border-radius:12px}
 .account-menu button{border:0;background:transparent;color:#eee;text-align:right;padding:10px;border-radius:8px;cursor:pointer;font:inherit;font-size:13px}
