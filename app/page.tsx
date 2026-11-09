@@ -32,6 +32,8 @@ export default function Home() {
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [authBusy, setAuthBusy] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [syncError, setSyncError] = useState("");
   const [displayName, setDisplayName] = useState("ضيف 4hab");
@@ -90,7 +92,8 @@ export default function Home() {
       setUser(data.session?.user ?? null);
       setAuthReady(true);
     });
-    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") setRecoveryMode(true);
       if (!session?.user) skipLocalSaveOnceRef.current = true;
       setUser(session?.user ?? null);
       setAuthReady(true);
@@ -212,6 +215,26 @@ export default function Home() {
       setAuthError("إذا كان البريد مسجلًا، ستصلك رسالة فيها رابط إعادة تعيين كلمة المرور. افحص صندوق الوارد والرسائل غير المرغوب فيها.");
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "تعذر إرسال رابط استعادة كلمة المرور.");
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function handleUpdatePassword() {
+    setAuthError("");
+    if (newPassword.length < 6) {
+      setAuthError("كلمة المرور الجديدة لازم تكون 6 أحرف على الأقل.");
+      return;
+    }
+    setAuthBusy(true);
+    try {
+      const { error } = await getSupabase().auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setNewPassword("");
+      setRecoveryMode(false);
+      setAuthError("تم تغيير كلمة المرور بنجاح. تقدر تستخدمها لتسجيل الدخول.");
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "تعذر تغيير كلمة المرور.");
     } finally {
       setAuthBusy(false);
     }
@@ -477,6 +500,15 @@ export default function Home() {
             <div className="setting-row"><div><strong>اللغة</strong><small>لغة واجهة الموقع</small></div><span className="setting-value">العربية</span></div>
             <div className="setting-row"><div><strong>الحساب</strong><small>{user?.email || "غير مسجل الدخول"}</small></div><button className="theme-switch" onClick={() => { setNameDraft(displayName); setPanel("profile"); }}>الملف الشخصي</button></div>
           </>}
+        </section>
+      </div>}
+      {recoveryMode && <div className="panel-shade">
+        <section className="settings-panel">
+          <div className="panel-heading"><strong>تعيين كلمة مرور جديدة</strong></div>
+          <p className="panel-muted">اكتب كلمة المرور الجديدة لحسابك.</p>
+          <input className="panel-input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="كلمة المرور الجديدة" autoComplete="new-password" />
+          {authError && <div className="auth-error">{authError}</div>}
+          <button className="panel-primary" style={{marginTop:14}} onClick={handleUpdatePassword} disabled={authBusy}>{authBusy ? "جارٍ الحفظ..." : "حفظ كلمة المرور"}</button>
         </section>
       </div>}
       {menu && <div className="shade" onClick={() => setMenu(false)} />}
