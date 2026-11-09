@@ -23,7 +23,11 @@ export default function Home() {
   const endRef = useRef<HTMLDivElement>(null);
   const [activeMessageMenu, setActiveMessageMenu] = useState<number | null>(null);
   const [listening, setListening] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState("متوقف");
   const recognitionRef = useRef<any>(null);
+  const voiceModeRef = useRef(false);
+  const voiceBusyRef = useRef(false);
   const skipLocalSaveOnceRef = useRef(false);
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -332,28 +336,87 @@ export default function Home() {
     setActiveMessageMenu(null);
   }
 
-  function toggleVoiceInput() {
-    if (listening) {
-      recognitionRef.current?.stop();
-      setListening(false);
+  function stopVoiceChat() {
+    voiceModeRef.current = false;
+    setVoiceMode(false);
+    setListening(false);
+    setVoiceStatus("متوقف");
+    recognitionRef.current?.stop();
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  }
+
+  function startVoiceRecognition() {
+    if (!voiceModeRef.current || voiceBusyRef.current) return;
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) {
+      setVoiceStatus("المتصفح لا يدعم المحادثة الصوتية");
+      stopVoiceChat();
       return;
     }
-    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognitionAPI) { alert("الإملاء الصوتي غير مدعوم هنا. جرّب Chrome أو Edge."); return; }
     const recognition = new SpeechRecognitionAPI();
     recognition.lang = "ar-EG";
     recognition.continuous = false;
-    recognition.interimResults = true;
+    recognition.interimResults = false;
+    recognition.onstart = () => { setListening(true); setVoiceStatus("أسمعك…"); };
     recognition.onresult = (event: any) => {
-      let transcript = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) transcript += event.results[i][0].transcript;
-      setInput((previous) => (previous ? previous + " " : "") + transcript);
+      const transcript = Array.from(event.results || []).map((result: any) => result?.[0]?.transcript || "").join(" ").trim();
+      if (transcript) { recognition.stop(); void sendVoiceTurn(transcript); }
     };
-    recognition.onerror = () => setListening(false);
-    recognition.onend = () => setListening(false);
+    recognition.onerror = (event: any) => {
+      setListening(false);
+      if (voiceModeRef.current && event?.error !== "no-speech" && event?.error !== "aborted") setVoiceStatus("تأكد من السماح باستخدام الميكروفون");
+    };
+    recognition.onend = () => {
+      setListening(false);
+      if (voiceModeRef.current && !voiceBusyRef.current && !window.speechSynthesis?.speaking) window.setTimeout(() => startVoiceRecognition(), 350);
+    };
     recognitionRef.current = recognition;
-    try { recognition.start(); setListening(true); }
-    catch { setListening(false); alert("لم أستطع تشغيل الميكروفون. تأكد من السماح باستخدامه للموقع."); }
+    try { recognition.start(); } catch { setListening(false); setVoiceStatus("تعذر تشغيل الميكروفون"); }
+  }
+
+  async function sendVoiceTurn(transcript: string) {
+    if (voiceBusyRef.current || !transcript.trim()) return;
+    const activeChat = chats.find((item) => item.id === cur);
+    if (!activeChat) return;
+    voiceBusyRef.current = true;
+    setBusy(true);
+    setVoiceStatus("أفكر…");
+    const userMsg: Msg = { role: "user", content: transcript.trim() };
+    update(activeChat.id, (item) => ({ ...item, title: item.messages.length ? item.title : transcript.trim().slice(0, 30), messages: [...item.messages, userMsg] }));
+    try {
+      const history = [...activeChat.messages, userMsg].filter((message) => !message.image && message.content).map((message) => ({ role: message.role, content: message.content }));
+      const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: history }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "حصل خطأ أثناء الاتصال.");
+      const answer = data.text || data.reply || "تعذر الرد.";
+      update(activeChat.id, (item) => ({ ...item, messages: [...item.messages, { role: "assistant", content: answer, sources: data.sources || [] }] }));
+      if (!voiceModeRef.current) { voiceBusyRef.current = false; setBusy(false); return; }
+      setVoiceStatus("أتكلم…");
+      const utterance = new SpeechSynthesisUtterance(answer);
+      utterance.lang = "ar-EG";
+      utterance.rate = 1;
+      const resume = () => { voiceBusyRef.current = false; setBusy(false); if (voiceModeRef.current) startVoiceRecognition(); };
+      utterance.onend = resume;
+      utterance.onerror = resume;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "حدث خطأ غير متوقع.";
+      update(activeChat.id, (item) => ({ ...item, messages: [...item.messages, { role: "assistant", content: message }] }));
+      voiceBusyRef.current = false;
+      setBusy(false);
+      if (voiceModeRef.current) startVoiceRecognition();
+    }
+  }
+
+  function toggleVoiceInput() {
+    if (voiceModeRef.current) { stopVoiceChat(); return; }
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI || !("speechSynthesis" in window)) { alert("المحادثة الصوتية تحتاج Chrome أو Edge يدعم الميكروفون وقراءة الصوت."); return; }
+    voiceModeRef.current = true;
+    setVoiceMode(true);
+    setVoiceStatus("جاري تشغيل الميكروفون…");
+    startVoiceRecognition();
   }
 
   async function send() {
@@ -557,6 +620,7 @@ export default function Home() {
           {busy && <div className="msg assistant">…</div>}
           <div ref={endRef} />
         </div>
+        {voiceMode && <div style={{position:"absolute",bottom:82,left:0,right:0,display:"flex",justifyContent:"center",zIndex:5,pointerEvents:"none"}}><div style={{pointerEvents:"auto",background:"#222",border:"1px solid #444",borderRadius:24,padding:"9px 14px",display:"flex",alignItems:"center",gap:12,color:"#eee",fontSize:13}}><span>{voiceStatus}</span><button onClick={stopVoiceChat} style={{border:0,borderRadius:18,padding:"7px 12px",background:"#eee",color:"#111",cursor:"pointer"}}>إنهاء المكالمة</button></div></div>}
         <div className="bar">
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f=e.target.files?.[0]; if(!f)return; if(f.size>8*1024*1024){alert("حجم الصورة يجب أن يكون أقل من 8MB");e.target.value="";return;} const reader=new FileReader(); reader.onload=()=>{setAttachment(String(reader.result));setAttachmentName(f.name);}; reader.readAsDataURL(f); e.target.value=""; }} />
           <div className="composer">
@@ -569,7 +633,7 @@ export default function Home() {
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             />
             {attachment && <div className="attachment-preview"><img src={attachment} alt="معاينة المرفق"/><span>{attachmentName}</span><button onClick={()=>{setAttachment(null);setAttachmentName("");}}>×</button></div>}
-            <button className={"inside-tool mic-tool" + (listening ? " selected" : "")} onClick={toggleVoiceInput} title={listening ? "إيقاف التسجيل" : "إملاء صوتي"} aria-label="إملاء صوتي"><svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="12" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-4 0h8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg></button>
+            <button className={"inside-tool mic-tool" + (voiceMode || listening ? " selected" : "")} onClick={toggleVoiceInput} title={voiceMode ? "إنهاء المكالمة الصوتية" : "بدء محادثة صوتية"} aria-label="محادثة صوتية"><svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="12" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-4 0h8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg></button>
             <button className="send" onClick={send} disabled={busy || (!input.trim() && !attachment)} aria-label="إرسال">↑</button>
           </div>
         </div>
