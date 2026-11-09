@@ -94,14 +94,19 @@ export default function Home() {
     }));
 
     try {
-      const normalizedText = text.normalize("NFD").replace(/[\u0300-\\u036f]/g, "").trim();
-      const imageIntent = /(?:^|\s)(?:صور|صوره|صورة|صورلي|صوري|وريني|هات|ابعتلي|ابعت|اعرضلي)(?:\s|$)/i.test(normalizedText);
+      const normalizedText = text.trim();
+      const imageWords = ["صور", "صوره", "صورة", "صورلي", "صوري", "وريني", "هات", "ابعتلي", "ابعت", "اعرضلي"];
+      const imageIntent = imageWords.some((word) => normalizedText.includes(word));
       const isSalahNameOnly = normalizedText === "محمد صلاح";
       const wantsRealImages = imageIntent || isSalahNameOnly;
-      const imageQuery = normalizedText
-        .replace(/^(?:من فضلك\s*)?(?:صورلي|صوري|صور|صوره|صورة|وريني|هات|ابعتلي|ابعت|اعرضلي)\s*/i, "")
-        .replace(/\s*(?:صور|صوره|صورة)$/i, "")
-        .trim() || normalizedText;
+      let imageQuery = normalizedText;
+      for (const word of imageWords) {
+        if (imageQuery.startsWith(word)) {
+          imageQuery = imageQuery.slice(word.length).trim();
+          break;
+        }
+      }
+      if (!imageQuery) imageQuery = normalizedText;
       if (wantsRealImages && !imageData) {
         const r = await fetch(`/api/search-images?q=${encodeURIComponent(imageQuery)}`);
         const d = await r.json();
