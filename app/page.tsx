@@ -340,14 +340,14 @@ export default function Home() {
   }
 
   const chat = chats.find((c) => c.id === cur);
-  const labels = {
+  const labels: Record<string, Record<string, string>> = {
     ar: {newChat:"محادثة جديدة",images:"الصور",tasks:"المهام المجدولة",library:"المكتبة",plugins:"المكونات الإضافية",explore:"استكشف",chats:"محادثاتك",language:"اللغة",empty:"كيف أقدر أساعدك اليوم؟",placeholder:"اسأل 4hab AI أي شيء…",archive:"الأرشيف"},
     en: {newChat:"New chat",images:"Images",tasks:"Scheduled tasks",library:"Library",plugins:"Plugins",explore:"Explore",chats:"Your chats",language:"Language",empty:"How can I help you today?",placeholder:"Ask 4hab AI anything…",archive:"Archive"},
     fr: {newChat:"Nouveau chat",images:"Images",tasks:"Tâches planifiées",library:"Bibliothèque",plugins:"Extensions",explore:"Explorer",chats:"Vos discussions",language:"Langue",empty:"Comment puis-je vous aider ?",placeholder:"Demandez tout à 4hab AI…",archive:"Archives"},
     de: {newChat:"Neuer Chat",images:"Bilder",tasks:"Geplante Aufgaben",library:"Bibliothek",plugins:"Erweiterungen",explore:"Entdecken",chats:"Deine Chats",language:"Sprache",empty:"Wie kann ich dir helfen?",placeholder:"Frag 4hab AI etwas…",archive:"Archiv"},
     pt: {newChat:"Nova conversa",images:"Imagens",tasks:"Tarefas agendadas",library:"Biblioteca",plugins:"Plugins",explore:"Explorar",chats:"Suas conversas",language:"Idioma",empty:"Como posso ajudar você hoje?",placeholder:"Pergunte qualquer coisa ao 4hab AI…",archive:"Arquivo"}
   };
-  const t = (key) => labels[locale]?.[key] || labels.ar[key] || key;
+  const t = (key: string) => labels[locale]?.[key] || labels.ar[key] || key;
   const imageLibrary = chats.flatMap((item) => item.messages.flatMap((message) => [
     ...(message.image ? [{url:message.image,title:item.title}] : []),
     ...(message.attachment ? [{url:message.attachment,title:item.title}] : []),
