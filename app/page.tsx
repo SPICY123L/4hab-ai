@@ -731,19 +731,21 @@ export default function Home() {
                     <img src={m.image} alt="صورة تم إنشاؤها بواسطة 4hab AI" />
                   </a>
                 </div>
-              ) : <><div>{renderLinkedText(m.content)}</div>{m.sources?.length ? <div className="sources">{m.sources.map((s,j)=><a key={j} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>)}</div> : null}<div className="actions">
-                <button onClick={() => copyMessage(m.content)} title="نسخ" aria-label="نسخ"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth="1.7"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" fill="none" stroke="currentColor" strokeWidth="1.7"/></svg></button>
-                <button onClick={() => shareMessage(m.content)} title="مشاركة" aria-label="مشاركة"><svg viewBox="0 0 24 24"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
-                <button onClick={() => speakMessage(m.content)} title="استماع" aria-label="استماع"><svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4H4zm12-1a5 5 0 0 1 0 6m2-9a9 9 0 0 1 0 12" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+              ) : <div>{renderLinkedText(m.content)}</div>}
+              {m.sources?.length ? <div className="sources">{m.sources.map((source,j)=><a key={j} href={source.url} target="_blank" rel="noreferrer">{source.title}</a>)}</div> : null}
+              {m.role === "assistant" && <div className="actions">
+                <button onClick={() => copyMessage(m.content)} title="نسخ" aria-label="نسخ">📋</button>
+                <button onClick={() => shareMessage(m.content)} title="مشاركة" aria-label="مشاركة">↗️</button>
+                <button onClick={() => speakMessage(m.content)} title="استماع" aria-label="استماع">🔊</button>
                 <div className="message-more">
-                  <button onClick={() => setActiveMessageMenu(activeMessageMenu === i ? null : i)} title="المزيد" aria-label="المزيد"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/></svg></button>
+                  <button onClick={() => setActiveMessageMenu(activeMessageMenu === i ? null : i)} title="المزيد" aria-label="المزيد">⋯</button>
                   {activeMessageMenu === i && <div className="more-menu">
-                    <button onClick={() => copyMessage(m.content)}>نسخ الرسالة</button>
-                    <button onClick={() => shareMessage(m.content)}>مشاركة الرسالة</button>
-                    <button onClick={() => speakMessage(m.content)}>استمع للرسالة</button>
+                    <button onClick={() => copyMessage(m.content)}>📋 نسخ الرسالة</button>
+                    <button onClick={() => shareMessage(m.content)}>↗️ مشاركة الرسالة</button>
+                    <button onClick={() => speakMessage(m.content)}>🔊 استمع للرسالة</button>
                   </div>}
                 </div>
-              </div></>}
+              </div>}
             </div>
           ))}
           {busy && <div className="msg assistant">…</div>}
@@ -846,7 +848,7 @@ button{font:inherit}
 .msg.assistant{background:transparent;border:0;align-self:stretch;color:#ededed}
 .msg img{max-width:100%;border-radius:14px;display:block}
 .real-image-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
-.real-image-card{min-width:0;background:#111;border:1px solid #303030;border-radius:14px;padding:8px}
+.real-image-card{min-width:0;background:transparent;border:0;border-radius:0;padding:0}
 .real-image-card img{width:100%;height:190px;object-fit:cover}
 .real-image-caption{font-size:12px;margin-top:7px;overflow-wrap:anywhere}
 .real-image-credit{font-size:10px;color:#999;overflow-wrap:anywhere}
@@ -856,7 +858,7 @@ button{font:inherit}
 .composer{flex:1;position:relative;min-width:0;display:flex;align-items:center;gap:9px;background:#171717;border:1px solid #3a3a3a;border-radius:28px;padding:6px 9px;box-shadow:0 4px 24px #0008;min-height:56px}
 .bar textarea{display:block;flex:1;width:100%;resize:none;max-height:130px;min-height:38px;background:transparent;color:#fff;border:0;outline:0;padding:7px 3px;font:inherit;min-width:0;line-height:1.5}
 .inside-tool{width:34px;height:34px;flex-shrink:0;border-radius:50%;border:0;background:transparent;color:#aaa;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:23px}
-.inside-tool:hover,.inside-tool.selected{background:#303030;color:#fff}
+.inside-tool:hover,.inside-tool.selected{background:transparent;color:#fff}
 .inside-tool svg{width:19px;height:19px;fill:none}
 .composer .send{width:36px;height:36px;flex-shrink:0;border-radius:50%;border:0;background:#f5f5f5;color:#111;font-size:1.25rem;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .composer .send:disabled{opacity:.4;cursor:not-allowed}
@@ -864,18 +866,18 @@ button{font:inherit}
 
 .bar textarea::placeholder{color:#929292}
 
-.actions{display:flex;gap:5px;margin-top:12px;align-items:center}
-.actions button{width:30px;height:30px;padding:6px;border:0;border-radius:8px;color:#999;display:flex;align-items:center;justify-content:center}
+.actions{display:flex;gap:12px;margin-top:12px;align-items:center}
+.actions button{width:auto;min-width:28px;height:30px;padding:2px;border:0;border-radius:0;background:transparent!important;box-shadow:none;color:#999;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer}
 .actions button svg{width:17px;height:17px;fill:none}
-.actions button:hover{background:#242424;color:#eee}
+.actions button:hover{background:transparent!important;color:#fff;transform:translateY(-1px)}
 .message-more{position:relative}
-.more-menu{position:absolute;bottom:35px;right:0;z-index:30;min-width:150px;padding:5px;background:#252525;border:1px solid #444;border-radius:10px;box-shadow:0 8px 28px #000b;display:flex;flex-direction:column}
-.more-menu button{width:100%;height:auto;justify-content:flex-start;padding:9px 10px;color:#eee;font-size:13px;white-space:nowrap}
-.more-menu button:hover{background:#383838}
+.more-menu{position:absolute;bottom:35px;right:0;z-index:30;min-width:150px;padding:4px;background:transparent;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column}
+.more-menu button{width:100%;height:auto;justify-content:flex-start;padding:7px 4px;color:#eee;font-size:13px;white-space:nowrap;background:transparent!important;border:0;box-shadow:none}
+.more-menu button:hover{background:transparent!important;color:#fff}
 .mic-tool svg{width:19px;height:19px}
 .msg a{color:#8ab4f8;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
-.actions button,.sources a{background:transparent;border:1px solid #383838;border-radius:8px;color:#aaa;padding:5px 9px;font:inherit;font-size:12px;text-decoration:none;cursor:pointer}
-.actions button:hover,.sources a:hover{background:#202020;color:#fff}
+.actions button,.sources a{background:transparent!important;border:0;border-radius:0;box-shadow:none;color:#aaa;padding:3px 0;font:inherit;font-size:18px;text-decoration:none;cursor:pointer}
+.actions button:hover,.sources a:hover{background:transparent!important;color:#fff}
 .sources{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
 .uploaded{max-width:240px;max-height:240px;object-fit:contain;border-radius:14px;display:block;margin-bottom:9px}
 .attachment-preview{display:flex;align-items:center;gap:8px;padding:6px}
