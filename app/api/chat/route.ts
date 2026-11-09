@@ -59,7 +59,7 @@ async function searchRealImages(query: string): Promise<RealImage[]> {
 
 function makeAnswerBlocks(answer: string, imagesByQuery: Map<string, RealImage[]>): AnswerBlock[] {
   const blocks: AnswerBlock[] = [];
-  const pattern = /\\[\\[IMAGE:\\s*([^\\]]+)\\]\\]/g;
+  const pattern = /\[\[IMAGE:\s*([^\]]+)\]\]/g;
   let last = 0;
   for (const match of answer.matchAll(pattern)) {
     const index = match.index ?? 0;
@@ -107,10 +107,10 @@ export async function POST(req: Request) {
       catch (error) { console.error("Fallback error:", String(error)); }
     }
     answer = answer || "الخدمة مزدحمة الآن، حاول بعد قليل.";
-    const imageQueries = [...answer.matchAll(/\\[\\[IMAGE:\\s*([^\\]]+)\\]\\]/g)].map((match) => match[1].trim()).slice(0, 3);
+    const imageQueries = [...answer.matchAll(/\[\[IMAGE:\s*([^\]]+)\]\]/g)].map((match) => match[1].trim()).slice(0, 3);
     const imageResults = await Promise.all(imageQueries.map(async (query) => [query, await searchRealImages(query)] as const));
     const blocks = makeAnswerBlocks(answer, new Map(imageResults));
-    const cleanAnswer = answer.replace(/\\[\\[IMAGE:\\s*([^\\]]+)\\]\\]/g, "").replace(/\\n{3,}/g, "\\n\\n").trim();
+    const cleanAnswer = answer.replace(/\[\[IMAGE:\s*([^\]]+)\]\]/g, "").replace(/\n{3,}/g, "\n\n").trim();
     return Response.json({ text: cleanAnswer, reply: cleanAnswer, message: cleanAnswer, sources, blocks });
   } catch (error) {
     console.error("Chat route error:", error);
