@@ -79,9 +79,9 @@ export default function Home() {
   const chat = chats.find((c) => c.id === cur);
 
   function renderLinkedText(value: string) {
-    const parts = value.split(/(https?:\\/\\/[^\\s<]+)/g);
+    const parts = value.split(/(https?:\/\/[^\s<]+)/g);
     return parts.map((part, index) => {
-      if (/^https?:\\/\\//i.test(part)) {
+      if (/^https?:\/\//i.test(part)) {
         const clean = part.replace(/[),.!؟،؛]+$/g, "");
         const tail = part.slice(clean.length);
         return <span key={index}><a href={clean} target="_blank" rel="noreferrer">{clean}</a>{tail}</span>;
