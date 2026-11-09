@@ -104,6 +104,7 @@ export async function POST(req: Request) {
     const messages: Msg[] = (body.messages || [{ role: "user", content: body.message || "" }]).slice(-20);
     let answer = "";
     let sources: Source[] = [];
+    let lastGeminiError = "";
     for (const model of MODELS) {
       try {
         const result = await gemini(model, messages);
@@ -111,11 +112,13 @@ export async function POST(req: Request) {
         sources = result.sources;
         if (answer) break;
       } catch (error) {
-        console.error("Gemini error:", String(error));
+        lastGeminiError = String(error).slice(0, 700);
+        console.error("Gemini error:", lastGeminiError);
       }
     }
     if (!answer) {
-      answer = "مش قادر أوصل لخدمة Gemini حاليًا. جرّب بعد دقيقة، ولو استمرت المشكلة تأكد إن GEMINI_API_KEY موجود وصالح في إعدادات Vercel.";
+      console.error("All Gemini models failed. Last error:", lastGeminiError);
+      answer = "تعذّر تشغيل Gemini. السبب التقني: " + (lastGeminiError || "لم يصل رد من الخدمة") + ". لا ترسل مفتاح API لأي شخص؛ ابعتلي نص الخطأ الظاهر هنا فقط.";
     }
     const asksAboutGiza = /giza|pyramid|khufu|khafre|menkaure|sphinx|أهرام|اهرام|هرم|الجيزة/.test(messages[messages.length - 1]?.content || "");
     if (asksAboutGiza && !/\[\[IMAGE:/.test(answer)) {
