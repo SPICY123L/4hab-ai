@@ -39,8 +39,8 @@ async function gemini(model: string, messages: Msg[]) {
 async function searchRealImages(query: string): Promise<RealImage[]> {
   const normalized = query.toLowerCase();
   const fallbacks = /giza|pyramid|khufu|khafre|menkaure|sphinx|ahram|هرم|أهرام/.test(normalized)
-    ? [query, "Giza pyramids Egypt", "Great Pyramid of Giza Khufu", "Great Sphinx Giza"]
-    : [query];
+    ? ["Giza pyramids Egypt", "Pyramids of Giza panoramic view", "Great Pyramid of Khufu Giza", "Pyramid of Khafre Giza", "Pyramid of Menkaure Giza", "Great Sphinx of Giza"]
+    : [query, query + " photograph"];
   const collected: RealImage[] = [];
   const seen = new Set<string>();
   const clean = (value?: string) => (value || "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/&quot;/g, '"').replace(/&amp;/g, "&").trim().slice(0, 250);
