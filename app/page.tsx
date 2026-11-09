@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabase } from "../lib/supabase/client";
 
-type Msg = { role: "user" | "assistant"; content: string; image?: string; attachment?: string; sources?: {title:string;url:string}[]; images?: {title:string;url:string;pageUrl?:string;artist?:string;license?:string}[] };
+type Msg = { role: "user" | "assistant"; content: string; image?: string; attachment?: string; sources?: {title:string;url:string}[]; images?: {title:string;url:string;pageUrl?:string;artist?:string;license?:string}[]; blocks?: {type:"text"|"image";text?:string;images?:{title:string;url:string;pageUrl?:string;artist?:string;license?:string}[]}[] };
 type Chat = { id: string; title: string; messages: Msg[]; pinned?: boolean; archived?: boolean };
 
 const KEY = "4hab-chats";
@@ -579,7 +579,7 @@ export default function Home() {
         if (!r.ok) throw new Error(d.error || "حصل خطأ أثناء الاتصال.");
         update(id, (c) => ({
           ...c,
-          messages: [...c.messages, { role: "assistant", content: d.text || d.reply || "تعذر الرد.", sources: d.sources || [] }],
+          messages: [...c.messages, { role: "assistant", content: d.text || d.reply || "تعذر الرد.", sources: d.sources || [], blocks: d.blocks || undefined }],
         }));
       }
     } catch (error) {
@@ -705,7 +705,16 @@ export default function Home() {
           {chat?.messages.map((m, i) => (
             <div key={i} className={"msg " + m.role}>
               {m.attachment && <img className="uploaded" src={m.attachment} alt="الصورة المرفقة" />}
-              {m.images?.length ? (
+              {m.blocks?.length ? (
+                <div className="rich-answer">{m.blocks.map((block,j) => block.type === "image" ? (
+                  <div className="real-image-grid" key={j}>{(block.images || []).map((photo,k)=><div className="real-image-card" key={photo.url + k}>
+                    <a href={photo.pageUrl || photo.url} target="_blank" rel="noreferrer"><img src={photo.url} alt={photo.title} loading="lazy" /></a>
+                    <div className="real-image-caption">{photo.title}</div>
+                    {photo.artist && <div className="real-image-credit">المصدر: {photo.artist}</div>}
+                    {photo.license && <div className="real-image-credit">الرخصة: {photo.license}</div>}
+                  </div>)}</div>
+                ) : <div key={j}>{renderLinkedText(block.text || "")}</div>)}</div>
+              ) : m.images?.length ? (
                 <div>
                   {m.content && <p>{m.content}</p>}
                   <div className="real-image-grid">{m.images.map((photo,j)=><div className="real-image-card" key={photo.url + j}>
