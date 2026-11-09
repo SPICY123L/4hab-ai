@@ -44,6 +44,13 @@ export default function Home() {
   const [nameDraft, setNameDraft] = useState("");
   const [panel, setPanel] = useState<"profile" | "settings" | null>(null);
   const [lightTheme, setLightTheme] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [accountMenu, setAccountMenu] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [compactMode, setCompactMode] = useState(false);
+  const [enterToSend, setEnterToSend] = useState(true);
+  const [fontScale, setFontScale] = useState("normal");
+  const avatarFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
@@ -66,6 +73,11 @@ export default function Home() {
       if (savedName) setDisplayName(savedName);
       const savedTheme = localStorage.getItem("4hab-theme");
       if (savedTheme === "light") setLightTheme(true);
+      const savedAvatar = localStorage.getItem("4hab-avatar");
+      if (savedAvatar) setAvatarUrl(savedAvatar);
+      setCompactMode(localStorage.getItem("4hab-compact") === "true");
+      setEnterToSend(localStorage.getItem("4hab-enter-send") !== "false");
+      setFontScale(localStorage.getItem("4hab-font-scale") || "normal");
     } catch {}
     setReady(true);
   }, []);
@@ -109,6 +121,7 @@ export default function Home() {
       setUser(session?.user ?? null);
       setAuthReady(true);
       setAuthError("");
+      if (session?.user) setAuthOpen(false);
     });
     return () => {
       active = false;
@@ -269,6 +282,23 @@ export default function Home() {
     setDisplayName(cleanName);
     try { localStorage.setItem("4hab-profile-name", cleanName); } catch {}
     setPanel(null);
+  }
+
+  function saveAvatar(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { alert("اختر ملف صورة فقط."); return; }
+    if (file.size > 2 * 1024 * 1024) { alert("حجم الصورة يجب أن يكون أقل من 2MB."); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result || "");
+      setAvatarUrl(value);
+      try { localStorage.setItem("4hab-avatar", value); } catch { alert("الصورة كبيرة على مساحة التخزين المحلية."); }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function savePreference(key: string, value: string | boolean) {
+    try { localStorage.setItem(key, String(value)); } catch {}
   }
 
   function changeTheme(next: boolean) {
@@ -512,32 +542,10 @@ export default function Home() {
   }
 
   return (
-    <div className={"app" + (lightTheme ? " light" : "")} dir="rtl">
+    <div className={"app" + (lightTheme ? " light" : "") + (compactMode ? " compact" : "") + (fontScale !== "normal" ? " font-" + fontScale : "")} dir="rtl">
       <style>{css}</style>
       <aside className={"side" + (menu ? " open" : "")}>
         <div className="logo">4hab AI ✦</div>
-        <section className="auth-panel">
-          {user ? (
-            <>
-              <div className="auth-status">مسجل الدخول</div>
-              <div className="auth-email" title={user.email || ""}>{user.email}</div>
-              <button className="auth-button" onClick={handleSignOut}>تسجيل الخروج</button>
-            </>
-          ) : (
-            <>
-              <div className="auth-status">{authMode === "signin" ? "تسجيل الدخول" : "إنشاء حساب جديد"}</div>
-              <input className="auth-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="البريد الإلكتروني" autoComplete="email" />
-              <input className="auth-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="كلمة المرور" autoComplete={authMode === "signin" ? "current-password" : "new-password"} />
-              <button className="auth-button" onClick={handleAuth} disabled={authBusy || !authReady}>{authBusy ? "انتظر..." : authMode === "signin" ? "دخول" : "إنشاء الحساب"}</button>
-              <button className="auth-switch" onClick={() => { setAuthMode(authMode === "signin" ? "signup" : "signin"); setAuthError(""); }}>
-                {authMode === "signin" ? "ليس لديك حساب؟ أنشئ حسابًا" : "لديك حساب؟ سجّل الدخول"}
-              </button>
-              {authMode === "signin" && <button className="auth-switch" onClick={handlePasswordReset} disabled={authBusy}>نسيت كلمة المرور؟</button>}
-            </>
-          )}
-          {authError && <div className="auth-error">{authError}</div>}
-          {syncError && <div className="auth-error">مزامنة المحادثات: {syncError}</div>}
-        </section>
         <button className="new" onClick={newChat}>＋ محادثة جديدة</button>
         <div className="list">
           {chats.map((c) => (
@@ -548,27 +556,62 @@ export default function Home() {
           ))}
         </div>
         <div className="side-bottom">
-          <button className="side-account" onClick={() => { setNameDraft(displayName); setPanel("settings"); setMenu(false); }}>
-            <span className="account-avatar">{(displayName || "ض").slice(0,1)}</span>
-            <span className="account-copy"><strong>{displayName}</strong><small>{user?.email || "الملف الشخصي"}</small></span>
+          <input ref={avatarFileRef} type="file" accept="image/*" hidden onChange={(e) => { saveAvatar(e.target.files?.[0]); e.currentTarget.value = ""; }} />
+          <button className="side-account" onClick={() => setAccountMenu(!accountMenu)}>
+            {avatarUrl ? <img className="account-avatar" src={avatarUrl} alt="صورة الحساب" /> : <span className="account-avatar">{(displayName || "ض").slice(0,1)}</span>}
+            <span className="account-copy"><strong>{displayName}</strong><small>{user?.email || "حساب ضيف"}</small></span>
             <span className="account-more">⋯</span>
           </button>
+          {accountMenu && <div className="account-menu">
+            {user ? <>
+              <button onClick={() => { setNameDraft(displayName); setPanel("profile"); setAccountMenu(false); }}>الملف الشخصي</button>
+              <button onClick={() => { setPanel("settings"); setAccountMenu(false); }}>الإعدادات</button>
+              <button className="logout-item" onClick={() => { setAccountMenu(false); void handleSignOut(); }}>تسجيل الخروج</button>
+            </> : <>
+              <button onClick={() => { setAuthMode("signin"); setAuthError(""); setAuthOpen(true); setAccountMenu(false); }}>تسجيل الدخول</button>
+              <button onClick={() => { setAuthMode("signup"); setAuthError(""); setAuthOpen(true); setAccountMenu(false); }}>إنشاء حساب</button>
+              <button onClick={() => { setPanel("profile"); setAccountMenu(false); }}>الملف الشخصي</button>
+              <button onClick={() => { setPanel("settings"); setAccountMenu(false); }}>الإعدادات</button>
+            </>}
+          </div>}
         </div>
       </aside>
+      {authOpen && <div className="panel-shade" onClick={() => setAuthOpen(false)}>
+        <section className="settings-panel auth-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="panel-heading"><strong>{authMode === "signin" ? "تسجيل الدخول إلى 4hab AI" : "إنشاء حساب جديد"}</strong><button onClick={() => setAuthOpen(false)}>×</button></div>
+          <input className="panel-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="البريد الإلكتروني" autoComplete="email" />
+          <input className="panel-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="كلمة المرور" autoComplete={authMode === "signin" ? "current-password" : "new-password"} />
+          <button className="panel-primary" onClick={handleAuth} disabled={authBusy || !authReady}>{authBusy ? "انتظر..." : authMode === "signin" ? "دخول" : "إنشاء الحساب"}</button>
+          <button className="auth-switch" onClick={() => { setAuthMode(authMode === "signin" ? "signup" : "signin"); setAuthError(""); }}>{authMode === "signin" ? "ليس لديك حساب؟ أنشئ حسابًا" : "لديك حساب؟ سجّل الدخول"}</button>
+          {authMode === "signin" && <button className="auth-switch" onClick={handlePasswordReset} disabled={authBusy}>نسيت كلمة المرور؟</button>}
+          {authError && <div className="auth-error">{authError}</div>}
+        </section>
+      </div>}
       {panel && <div className="panel-shade" onClick={() => setPanel(null)}>
         <section className="settings-panel" onClick={(e) => e.stopPropagation()}>
           <div className="panel-heading"><strong>{panel === "profile" ? "الملف الشخصي" : "الإعدادات"}</strong><button onClick={() => setPanel(null)}>×</button></div>
           {panel === "profile" ? <>
-            <div className="profile-big-avatar">{(displayName || "ض").slice(0,1)}</div>
+            <div className="profile-big-avatar">{avatarUrl ? <img src={avatarUrl} alt="صورة الملف الشخصي" /> : (displayName || "ض").slice(0,1)}</div>
+            <button className="panel-secondary" onClick={() => avatarFileRef.current?.click()}>تغيير صورة الحساب</button>
+            {avatarUrl && <button className="auth-switch" onClick={() => { setAvatarUrl(""); try { localStorage.removeItem("4hab-avatar"); } catch {} }}>إزالة الصورة</button>}
             <label className="panel-label">اسم العرض</label>
             <input className="panel-input" value={nameDraft} maxLength={32} onChange={(e) => setNameDraft(e.target.value)} placeholder="اكتب اسمك" />
             <div className="panel-muted">{user?.email || "أنت تستخدم 4hab AI كضيف حاليًا."}</div>
-            <button className="panel-primary" onClick={saveProfile}>حفظ الاسم</button>
-            {user && <button className="panel-secondary" onClick={handleSignOut}>تسجيل الخروج</button>}
+            <button className="panel-primary" onClick={saveProfile}>حفظ الملف الشخصي</button>
           </> : <>
-            <div className="setting-row"><div><strong>المظهر</strong><small>اختار شكل 4hab AI</small></div><button className="theme-switch" onClick={() => changeTheme(!lightTheme)}>{lightTheme ? "فاتح ☀" : "داكن ☾"}</button></div>
-            <div className="setting-row"><div><strong>اللغة</strong><small>لغة واجهة الموقع</small></div><span className="setting-value">العربية</span></div>
-            <div className="setting-row"><div><strong>الحساب</strong><small>{user?.email || "غير مسجل الدخول"}</small></div><button className="theme-switch" onClick={() => { setNameDraft(displayName); setPanel("profile"); }}>الملف الشخصي</button></div>
+            <div className="settings-scroll">
+              <h3 className="settings-section-title">المظهر والتخصيص</h3>
+              <div className="setting-row"><div><strong>المظهر</strong><small>فاتح أو داكن</small></div><button className="theme-switch" onClick={() => changeTheme(!lightTheme)}>{lightTheme ? "فاتح ☀" : "داكن ☾"}</button></div>
+              <div className="setting-row"><div><strong>كثافة المحادثات</strong><small>تقليل المسافات بين الرسائل</small></div><button className="theme-switch" onClick={() => { const v=!compactMode; setCompactMode(v); savePreference("4hab-compact",v); }}>{compactMode ? "مريحة" : "مضغوطة"}</button></div>
+              <div className="setting-row"><div><strong>حجم الخط</strong><small>حجم النص داخل المحادثة</small></div><select className="settings-select" value={fontScale} onChange={(e) => { setFontScale(e.target.value); savePreference("4hab-font-scale",e.target.value); }}><option value="small">صغير</option><option value="normal">متوسط</option><option value="large">كبير</option></select></div>
+              <h3 className="settings-section-title">المحادثة والكتابة</h3>
+              <div className="setting-row"><div><strong>Enter للإرسال</strong><small>إرسال الرسالة بزر Enter</small></div><button className="theme-switch" onClick={() => { const v=!enterToSend; setEnterToSend(v); savePreference("4hab-enter-send",v); }}>{enterToSend ? "مفعّل" : "متوقف"}</button></div>
+              <div className="setting-row"><div><strong>اللغة</strong><small>لغة واجهة الموقع</small></div><span className="setting-value">العربية</span></div>
+              <h3 className="settings-section-title">الحساب والخصوصية</h3>
+              <div className="setting-row"><div><strong>البريد الإلكتروني</strong><small>{user?.email || "حساب ضيف"}</small></div><span className="setting-value">{user ? "متصل" : "ضيف"}</span></div>
+              <div className="setting-row"><div><strong>الملف الشخصي</strong><small>الاسم وصورة الحساب</small></div><button className="theme-switch" onClick={() => setPanel("profile")}>فتح</button></div>
+              <div className="setting-row"><div><strong>تسجيل الخروج</strong><small>إنهاء جلسة الحساب</small></div><button className="theme-switch" onClick={handleSignOut} disabled={!user}>خروج</button></div>
+            </div>
           </>}
         </section>
       </div>}
@@ -637,7 +680,7 @@ export default function Home() {
               value={input}
               placeholder={imgMode ? "اوصف الصورة…" : "اسأل 4hab AI أي شيء…"}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+              onKeyDown={(e) => { if (enterToSend && e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             />
             {attachment && <div className="attachment-preview"><img src={attachment} alt="معاينة المرفق"/><span>{attachmentName}</span><button onClick={()=>{setAttachment(null);setAttachmentName("");}}>×</button></div>}
             <button className={"inside-tool mic-tool" + (voiceMode || listening ? " selected" : "")} onClick={toggleVoiceInput} title={voiceMode ? "إنهاء المكالمة الصوتية" : "بدء محادثة صوتية"} aria-label="محادثة صوتية"><svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="12" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-4 0h8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg></button>
@@ -651,6 +694,20 @@ export default function Home() {
 
 const css = `
 *{box-sizing:border-box}
+
+.account-menu{display:flex;flex-direction:column;gap:3px;padding:6px;margin:4px 0 0;background:#191919;border:1px solid #333;border-radius:12px}
+.account-menu button{border:0;background:transparent;color:#eee;text-align:right;padding:10px;border-radius:8px;cursor:pointer;font:inherit;font-size:13px}
+.account-menu button:hover{background:#303030}.account-menu .logout-item{color:#ff9b91}
+.account-avatar{object-fit:cover}
+.profile-big-avatar{overflow:hidden;width:76px;height:76px;margin:0 auto 14px;font-size:26px}
+.profile-big-avatar img{width:100%;height:100%;object-fit:cover}
+.auth-modal{display:flex;flex-direction:column;gap:12px}
+.settings-scroll{max-height:min(65vh,620px);overflow:auto;padding-left:4px}
+.settings-section-title{font-size:12px;color:#aaa;margin:18px 0 4px}
+.settings-select{background:#292929;color:#eee;border:1px solid #484848;border-radius:8px;padding:7px}
+.app.compact .msgs{gap:14px}.app.compact .msg{line-height:1.55}
+.app.font-small .msg{font-size:13px}.app.font-large .msg{font-size:18px}
+
 .auth-panel{padding:10px;margin:0 0 14px;border:1px solid #292929;border-radius:12px;background:#101010;display:flex;flex-direction:column;gap:8px}
 .auth-status{font-size:13px;color:#eee;font-weight:600}
 .auth-email{font-size:12px;color:#aaa;overflow-wrap:anywhere}
