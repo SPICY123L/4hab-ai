@@ -34,6 +34,10 @@ export default function Home() {
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState("");
   const [syncError, setSyncError] = useState("");
+  const [displayName, setDisplayName] = useState("ضيف 4hab");
+  const [nameDraft, setNameDraft] = useState("");
+  const [panel, setPanel] = useState<"profile" | "settings" | null>(null);
+  const [lightTheme, setLightTheme] = useState(false);
 
   useEffect(() => {
     try {
@@ -51,6 +55,12 @@ export default function Home() {
       setChats([c]);
       setCur(c.id);
     }
+    try {
+      const savedName = localStorage.getItem("4hab-profile-name");
+      if (savedName) setDisplayName(savedName);
+      const savedTheme = localStorage.getItem("4hab-theme");
+      if (savedTheme === "light") setLightTheme(true);
+    } catch {}
     setReady(true);
   }, []);
 
@@ -197,6 +207,19 @@ export default function Home() {
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "تعذر تسجيل الخروج.");
     }
+  }
+
+  function saveProfile() {
+    const cleanName = nameDraft.trim().slice(0, 32);
+    if (!cleanName) return;
+    setDisplayName(cleanName);
+    try { localStorage.setItem("4hab-profile-name", cleanName); } catch {}
+    setPanel(null);
+  }
+
+  function changeTheme(next: boolean) {
+    setLightTheme(next);
+    try { localStorage.setItem("4hab-theme", next ? "light" : "dark"); } catch {}
   }
 
   function newChat() {
@@ -376,7 +399,7 @@ export default function Home() {
   }
 
   return (
-    <div className="app" dir="rtl">
+    <div className={"app" + (lightTheme ? " light" : "")} dir="rtl">
       <style>{css}</style>
       <aside className={"side" + (menu ? " open" : "")}>
         <div className="logo">4hab AI ✦</div>
@@ -410,7 +433,32 @@ export default function Home() {
             </div>
           ))}
         </div>
+        <div className="side-bottom">
+          <button className="side-account" onClick={() => { setNameDraft(displayName); setPanel("profile"); setMenu(false); }}>
+            <span className="account-avatar">{(displayName || "ض").slice(0,1)}</span>
+            <span className="account-copy"><strong>{displayName}</strong><small>{user?.email || "الملف الشخصي"}</small></span>
+            <span className="account-more">⋯</span>
+          </button>
+          <button className="settings-entry" onClick={() => { setPanel("settings"); setMenu(false); }}>⚙ الإعدادات</button>
+        </div>
       </aside>
+      {panel && <div className="panel-shade" onClick={() => setPanel(null)}>
+        <section className="settings-panel" onClick={(e) => e.stopPropagation()}>
+          <div className="panel-heading"><strong>{panel === "profile" ? "الملف الشخصي" : "الإعدادات"}</strong><button onClick={() => setPanel(null)}>×</button></div>
+          {panel === "profile" ? <>
+            <div className="profile-big-avatar">{(displayName || "ض").slice(0,1)}</div>
+            <label className="panel-label">اسم العرض</label>
+            <input className="panel-input" value={nameDraft} maxLength={32} onChange={(e) => setNameDraft(e.target.value)} placeholder="اكتب اسمك" />
+            <div className="panel-muted">{user?.email || "أنت تستخدم 4hab AI كضيف حاليًا."}</div>
+            <button className="panel-primary" onClick={saveProfile}>حفظ الاسم</button>
+            {user && <button className="panel-secondary" onClick={handleSignOut}>تسجيل الخروج</button>}
+          </> : <>
+            <div className="setting-row"><div><strong>المظهر</strong><small>اختار شكل 4hab AI</small></div><button className="theme-switch" onClick={() => changeTheme(!lightTheme)}>{lightTheme ? "فاتح ☀" : "داكن ☾"}</button></div>
+            <div className="setting-row"><div><strong>اللغة</strong><small>لغة واجهة الموقع</small></div><span className="setting-value">العربية</span></div>
+            <div className="setting-row"><div><strong>الحساب</strong><small>{user?.email || "غير مسجل الدخول"}</small></div><button className="theme-switch" onClick={() => { setNameDraft(displayName); setPanel("profile"); }}>الملف الشخصي</button></div>
+          </>}
+        </section>
+      </div>}
       {menu && <div className="shade" onClick={() => setMenu(false)} />}
       <main className="main">
         <header className="top">
@@ -547,6 +595,48 @@ button{font:inherit}
 .attachment-preview img{width:42px;height:42px;object-fit:cover;border-radius:8px}
 .attachment-preview span{font-size:12px;color:#ddd;overflow:hidden;text-overflow:ellipsis}
 .attachment-preview button{border:0;background:#444;color:white;border-radius:50%;width:24px;height:24px}
+.side-bottom{margin-top:auto;padding-top:10px;border-top:1px solid #292929;display:flex;flex-direction:column;gap:6px}
+.side-account{display:flex;align-items:center;gap:10px;width:100%;padding:9px 7px;border:0;border-radius:10px;background:transparent;color:#eee;text-align:right;cursor:pointer}
+.side-account:hover,.settings-entry:hover{background:#202020}
+.account-avatar,.profile-big-avatar{display:grid;place-items:center;flex:none;border-radius:50%;background:#3c3c3c;color:#fff;font-weight:800}
+.account-avatar{width:36px;height:36px;font-size:15px}
+.account-copy{min-width:0;flex:1}
+.account-copy strong,.account-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.account-copy strong{font-size:13px}.account-copy small{font-size:10px;color:#999;margin-top:2px}
+.account-more{font-size:20px;color:#999}
+.settings-entry{width:100%;padding:10px;border:0;border-radius:9px;background:transparent;color:#bbb;text-align:right;cursor:pointer;font-size:13px}
+.panel-shade{position:fixed;inset:0;z-index:60;background:#000a;display:grid;place-items:center;padding:18px}
+.settings-panel{width:min(420px,100%);padding:20px;background:#191919;border:1px solid #383838;border-radius:18px;box-shadow:0 20px 80px #000b;color:#eee}
+.panel-heading{display:flex;align-items:center;justify-content:space-between;font-size:17px;margin-bottom:20px}
+.panel-heading button{border:0;background:transparent;color:#aaa;font-size:25px;cursor:pointer}
+.profile-big-avatar{width:66px;height:66px;margin:0 auto 20px;font-size:26px}
+.panel-label{display:block;font-size:12px;color:#bbb;margin-bottom:7px}
+.panel-input{width:100%;padding:11px 12px;border:1px solid #444;border-radius:10px;background:#0d0d0d;color:#fff;outline:0;font:inherit}
+.panel-input:focus{border-color:#888}
+.panel-muted{font-size:11px;color:#999;margin:10px 0 16px;overflow-wrap:anywhere}
+.panel-primary,.panel-secondary,.theme-switch{border-radius:9px;padding:9px 13px;font:inherit;cursor:pointer}
+.panel-primary{width:100%;border:0;background:#eee;color:#111;font-weight:700}
+.panel-secondary{width:100%;margin-top:8px;border:1px solid #444;background:transparent;color:#ddd}
+.setting-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-bottom:1px solid #303030}
+.setting-row:last-child{border-bottom:0}
+.setting-row strong,.setting-row small{display:block}.setting-row strong{font-size:13px}.setting-row small{font-size:11px;color:#999;margin-top:3px}
+.setting-value{font-size:12px;color:#aaa}
+.theme-switch{border:1px solid #484848;background:#292929;color:#eee;font-size:12px;white-space:nowrap}
+.app.light{background:#f5f5f5;color:#202020}
+.app.light .side{background:#ededed;border-color:#d5d5d5}
+.app.light .logo,.app.light .top,.app.light .item,.app.light .side-account{color:#202020}
+.app.light .new,.app.light .settings-entry{color:#333;border-color:#ccc}
+.app.light .new:hover,.app.light .item:hover,.app.light .item.on,.app.light .side-account:hover,.app.light .settings-entry:hover{background:#ddd}
+.app.light .main{background:#f5f5f5}
+.app.light .top{border-color:#ddd}
+.app.light .msg.user{background:#e4e4e4;color:#202020}
+.app.light .msg.assistant{color:#202020}
+.app.light .composer{background:#fff;border-color:#ccc}
+.app.light .bar{background:linear-gradient(180deg,transparent 0%,#f5f5f5 20%)}
+.app.light .bar textarea{color:#202020}
+.app.light .empty{color:#202020}
+@media(max-width:760px){.side-bottom{padding-bottom:8px}}
+
 @media(max-width:760px){
 .side{position:fixed;top:0;bottom:0;right:0;z-index:20;transform:translateX(100%);transition:.25s}
 .side.open{transform:none}
