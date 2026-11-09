@@ -529,7 +529,7 @@ export default function Home() {
     try {
       const normalizedText = text.trim();
       const imageWords = ["صور", "صوره", "صورة", "صورلي", "صوري", "وريني", "هات", "ابعتلي", "ابعت", "اعرضلي"];
-      const imageIntent = imageWords.some((word) => normalizedText.includes(word));
+      const imageIntent = imageWords.some((word) => normalizedText === word || normalizedText.startsWith(word + " "));
       const isSalahNameOnly = normalizedText === "محمد صلاح";
       const wantsRealImages = imageIntent || isSalahNameOnly;
       let imageQuery = normalizedText;
