@@ -19,6 +19,9 @@ export default function Home() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [ready, setReady] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const [activeMessageMenu, setActiveMessageMenu] = useState<number | null>(null);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     try {
@@ -74,6 +77,67 @@ export default function Home() {
   }
 
   const chat = chats.find((c) => c.id === cur);
+
+  function renderLinkedText(value: string) {
+    const parts = value.split(/(https?:\\/\\/[^\\s<]+)/g);
+    return parts.map((part, index) => {
+      if (/^https?:\\/\\//i.test(part)) {
+        const clean = part.replace(/[),.!؟،؛]+$/g, "");
+        const tail = part.slice(clean.length);
+        return <span key={index}><a href={clean} target="_blank" rel="noreferrer">{clean}</a>{tail}</span>;
+      }
+      return <span key={index}>{part}</span>;
+    });
+  }
+
+  async function copyMessage(value: string) {
+    try { await navigator.clipboard.writeText(value); setActiveMessageMenu(null); }
+    catch { alert("تعذر النسخ. اسمح للمتصفح باستخدام الحافظة."); }
+  }
+
+  async function shareMessage(value: string) {
+    try {
+      if (navigator.share) await navigator.share({ text: value });
+      else { await navigator.clipboard.writeText(value); alert("تم نسخ الرسالة؛ يمكنك لصقها ومشاركتها."); }
+    } catch (error) {
+      if (!(error instanceof Error && error.name === "AbortError")) alert("تعذرت مشاركة الرسالة من هذا المتصفح.");
+    }
+    setActiveMessageMenu(null);
+  }
+
+  function speakMessage(value: string) {
+    if (!("speechSynthesis" in window)) { alert("ميزة قراءة النص غير مدعومة في هذا المتصفح."); return; }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(value);
+    utterance.lang = "ar-EG";
+    utterance.rate = 1;
+    window.speechSynthesis.speak(utterance);
+    setActiveMessageMenu(null);
+  }
+
+  function toggleVoiceInput() {
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) { alert("الإملاء الصوتي غير مدعوم هنا. جرّب Chrome أو Edge."); return; }
+    const recognition = new SpeechRecognitionAPI();
+    recognition.lang = "ar-EG";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.onresult = (event: any) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) transcript += event.results[i][0].transcript;
+      setInput((previous) => (previous ? previous + " " : "") + transcript);
+    };
+    recognition.onerror = () => setListening(false);
+    recognition.onend = () => setListening(false);
+    recognitionRef.current = recognition;
+    try { recognition.start(); setListening(true); }
+    catch { setListening(false); alert("لم أستطع تشغيل الميكروفون. تأكد من السماح باستخدامه للموقع."); }
+  }
 
   async function send() {
     const text = input.trim();
@@ -203,7 +267,19 @@ export default function Home() {
                     <img src={m.image} alt="صورة تم إنشاؤها بواسطة 4hab AI" />
                   </a>
                 </div>
-              ) : <><div>{m.content}</div>{m.sources?.length ? <div className="sources">{m.sources.map((s,j)=><a key={j} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>)}</div> : null}{m.role === "assistant" && <div className="actions"><button onClick={() => navigator.clipboard.writeText(m.content)} title="نسخ الرد">نسخ</button><button onClick={() => navigator.clipboard.writeText(m.content)} title="نسخ">⧉</button></div>}</>}
+              ) : <><div>{renderLinkedText(m.content)}</div>{m.sources?.length ? <div className="sources">{m.sources.map((s,j)=><a key={j} href={s.url} target="_blank" rel="noreferrer">{s.title}</a>)}</div> : null}<div className="actions">
+                <button onClick={() => copyMessage(m.content)} title="نسخ" aria-label="نسخ"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth="1.7"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" fill="none" stroke="currentColor" strokeWidth="1.7"/></svg></button>
+                <button onClick={() => shareMessage(m.content)} title="مشاركة" aria-label="مشاركة"><svg viewBox="0 0 24 24"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+                <button onClick={() => speakMessage(m.content)} title="استماع" aria-label="استماع"><svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6l-5 4H4zm12-1a5 5 0 0 1 0 6m2-9a9 9 0 0 1 0 12" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+                <div className="message-more">
+                  <button onClick={() => setActiveMessageMenu(activeMessageMenu === i ? null : i)} title="المزيد" aria-label="المزيد"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/></svg></button>
+                  {activeMessageMenu === i && <div className="more-menu">
+                    <button onClick={() => copyMessage(m.content)}>نسخ الرسالة</button>
+                    <button onClick={() => shareMessage(m.content)}>مشاركة الرسالة</button>
+                    <button onClick={() => speakMessage(m.content)}>استمع للرسالة</button>
+                  </div>}
+                </div>
+              </div></>}
             </div>
           ))}
           {busy && <div className="msg assistant">…</div>}
@@ -211,9 +287,9 @@ export default function Home() {
         </div>
         <div className="bar">
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f=e.target.files?.[0]; if(!f)return; if(f.size>8*1024*1024){alert("حجم الصورة يجب أن يكون أقل من 8MB");e.target.value="";return;} const reader=new FileReader(); reader.onload=()=>{setAttachment(String(reader.result));setAttachmentName(f.name);}; reader.readAsDataURL(f); e.target.value=""; }} />
-          <button className="tool" onClick={() => fileRef.current?.click()} title="إرفاق صورة" aria-label="إرفاق صورة">＋</button>
+          <button className="tool" onClick={() => fileRef.current?.click()} title="إرفاق ملف" aria-label="إرفاق ملف">＋</button>
           <button className={"tool image-tool" + (imgMode ? " selected" : "")} onClick={() => setImgMode(!imgMode)} title="إنشاء صورة" aria-label="تبديل وضع الصور"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4" fill="none" stroke="currentColor" strokeWidth="1.7"/><circle cx="8.5" cy="8.5" r="1.7" fill="currentColor"/><path d="m4 17 5-5 3.5 3.5 2.5-2.5 5 5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
-          <div className="composer"><textarea
+          <button className={"tool mic-tool" + (listening ? " selected" : "")} onClick={toggleVoiceInput} title={listening ? "إيقاف التسجيل" : "إملاء صوتي"} aria-label="إملاء صوتي"><svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="12" rx="3" fill="none" stroke="currentColor" strokeWidth="1.7"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-4 0h8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/></svg></button>\n          <div className="composer"><textarea
             rows={1}
             value={input}
             placeholder={imgMode ? "اوصف الصورة…" : "اسأل 4hab AI أي شيء…"}
@@ -267,7 +343,16 @@ button{font:inherit}
 .send{background:#f5f5f5;color:#111;border:0;font-size:1.35rem;font-weight:700}
 .send:disabled{opacity:.4;cursor:not-allowed}
 .tool.selected{background:#f5f5f5;color:#111;border-color:#f5f5f5}
-.actions{display:flex;gap:8px;margin-top:12px}
+.actions{display:flex;gap:5px;margin-top:12px;align-items:center}
+.actions button{width:30px;height:30px;padding:6px;border:0;border-radius:8px;color:#999;display:flex;align-items:center;justify-content:center}
+.actions button svg{width:17px;height:17px;fill:none}
+.actions button:hover{background:#242424;color:#eee}
+.message-more{position:relative}
+.more-menu{position:absolute;bottom:35px;right:0;z-index:30;min-width:150px;padding:5px;background:#252525;border:1px solid #444;border-radius:10px;box-shadow:0 8px 28px #000b;display:flex;flex-direction:column}
+.more-menu button{width:100%;height:auto;justify-content:flex-start;padding:9px 10px;color:#eee;font-size:13px;white-space:nowrap}
+.more-menu button:hover{background:#383838}
+.mic-tool svg{width:20px;height:20px}
+.msg a{color:#8ab4f8;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
 .actions button,.sources a{background:transparent;border:1px solid #383838;border-radius:8px;color:#aaa;padding:5px 9px;font:inherit;font-size:12px;text-decoration:none;cursor:pointer}
 .actions button:hover,.sources a:hover{background:#202020;color:#fff}
 .sources{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
